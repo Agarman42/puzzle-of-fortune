@@ -1,0 +1,10 @@
+{
+  "name": "puzzle-of-fortune",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phrase puzzle game — static site, no build step",
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "start": "python3 -m http.server 8080"
+  }
+}

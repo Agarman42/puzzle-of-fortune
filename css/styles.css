@@ -1,0 +1,452 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+    --christmas-red: #c8102e;
+    --christmas-green: #006341;
+}
+
+body {
+    font-family: 'Inter', system_ui, sans-serif;
+}
+
+.heading-font {
+    font-family: 'Playfair Display', Georgia, serif;
+}
+
+.puzzle-tile {
+    width: 38px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    font-weight: 700;
+    border: 3px solid #334155;
+    background-color: #f8fafc;
+    color: #0f172a;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Larger, more readable tiles on phones */
+@media (max-width: 640px) {
+    .puzzle-tile {
+        width: 44px;
+        height: 50px;
+        font-size: 1.4rem;
+    }
+}
+
+.puzzle-tile.revealed {
+    background-color: #fefce8;
+    border-color: #854d0e;
+    color: #713f12;
+    box-shadow: 0 3px 6px rgba(133, 77, 14, 0.2);
+    animation: revealPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes revealPop {
+    0% {
+        transform: scale(0.6);
+        opacity: 0.3;
+    }
+    60% {
+        transform: scale(1.15);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.puzzle-tile.space {
+    border: none;
+    background: transparent;
+    width: 18px;
+    box-shadow: none;
+}
+
+input.puzzle-tile {
+    cursor: text;
+    caret-color: #0f172a;
+}
+input.puzzle-tile:focus {
+    border-color: #c8102e;
+    box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.25);
+    outline: none;
+}
+input.puzzle-tile:hover:not(:focus) {
+    border-color: #64748b;
+}
+
+.letter-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+}
+
+.word-group {
+    display: flex;
+    gap: 4px;
+    margin-right: 14px;
+}
+
+.modal {
+    animation: modalPop 0.2s ease forwards;
+}
+
+@keyframes modalPop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.christmas-bg {
+    background: linear-gradient(135deg, #0f172a 0%, #1e2937 100%);
+}
+
+.puzzle-container {
+    background: #f8fafc;
+    border: 8px solid #334155;
+    box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.1);
+}
+
+.score-badge {
+    background: linear-gradient(to right, #c8102e, #9f1239);
+    color: white;
+    box-shadow: 0 4px 6px -1px rgb(200 16 46 / 0.3);
+}
+
+.nav-active {
+    background-color: #c8102e;
+    color: white;
+    border-radius: 9999px;
+}
+
+.solved-badge {
+    background-color: #166534;
+    color: #86efac;
+}
+
+/* Nice visual feedback when correct letters freeze after a wrong answer */
+.puzzle-container.letters-just-frozen {
+    animation: freezePulse 1.3s ease-out;
+}
+
+@keyframes freezePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.45);
+    }
+    70% {
+        box-shadow: 0 0 0 14px rgba(52, 211, 153, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+    }
+}
+
+/* Subtle flash when a letter is revealed */
+.puzzle-container.letter-just-revealed {
+    transition: box-shadow 0.1s ease;
+    box-shadow: 0 0 0 6px rgba(163, 163, 172, 0.18);
+}
+
+/* ─── App dialogs (sexy confirms / alerts) ─── */
+.app-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: appDialogBackdropIn 0.22s ease-out forwards;
+}
+
+@media (min-width: 640px) {
+    .app-dialog-overlay {
+        align-items: center;
+    }
+}
+
+@keyframes appDialogBackdropIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes appDialogBackdropOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.app-dialog-card {
+    position: relative;
+    width: 100%;
+    max-width: 26rem;
+    overflow: hidden;
+    border-radius: 1.75rem 1.75rem 1.25rem 1.25rem;
+    background: linear-gradient(165deg, #1e293b 0%, #0f172a 55%, #0b1220 100%);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.6),
+        0 25px 50px -12px rgba(0, 0, 0, 0.65),
+        0 0 80px -20px var(--dialog-glow, rgba(200, 16, 46, 0.35));
+    animation: appDialogCardIn 0.38s cubic-bezier(0.34, 1.45, 0.64, 1) forwards;
+}
+
+@media (min-width: 640px) {
+    .app-dialog-card {
+        border-radius: 1.75rem;
+    }
+}
+
+@keyframes appDialogCardIn {
+    from {
+        opacity: 0;
+        transform: translateY(28px) scale(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes appDialogCardOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(16px) scale(0.96);
+    }
+}
+
+.app-dialog-overlay.is-leaving {
+    animation: appDialogBackdropOut 0.18s ease-in forwards;
+    pointer-events: none;
+}
+
+.app-dialog-overlay.is-leaving .app-dialog-card {
+    animation: appDialogCardOut 0.18s ease-in forwards;
+}
+
+/* Soft top glow bar */
+.app-dialog-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--dialog-accent, #c8102e) 30%,
+        var(--dialog-accent-2, #f59e0b) 70%,
+        transparent 100%
+    );
+    opacity: 0.95;
+}
+
+.app-dialog-card::after {
+    content: '';
+    position: absolute;
+    top: -40%;
+    left: 20%;
+    width: 60%;
+    height: 55%;
+    background: radial-gradient(ellipse, var(--dialog-glow, rgba(200, 16, 46, 0.22)) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.app-dialog-inner {
+    position: relative;
+    z-index: 1;
+    padding: 1.5rem 1.35rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+    .app-dialog-inner {
+        padding: 1.75rem 1.6rem 1.4rem;
+    }
+}
+
+.app-dialog-icon-wrap {
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: 0 auto 1rem;
+    border-radius: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.45rem;
+    background: var(--dialog-icon-bg, rgba(200, 16, 46, 0.15));
+    color: var(--dialog-accent, #f87171);
+    border: 1px solid var(--dialog-icon-border, rgba(248, 113, 113, 0.35));
+    box-shadow:
+        0 0 0 4px var(--dialog-icon-ring, rgba(200, 16, 46, 0.08)),
+        0 10px 24px -8px var(--dialog-glow, rgba(200, 16, 46, 0.4));
+    animation: appDialogIconPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.06s both;
+}
+
+@keyframes appDialogIconPop {
+    from {
+        opacity: 0;
+        transform: scale(0.5) rotate(-8deg);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.app-dialog-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1.2;
+    text-align: center;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+}
+
+.app-dialog-message {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    white-space: pre-line;
+    max-width: 22rem;
+    margin: 0 auto;
+}
+
+.app-dialog-actions {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.55rem;
+    margin-top: 1.35rem;
+}
+
+@media (min-width: 640px) {
+    .app-dialog-actions {
+        flex-direction: row;
+        justify-content: stretch;
+    }
+    .app-dialog-actions .app-dialog-btn {
+        flex: 1;
+    }
+}
+
+.app-dialog-btn {
+    min-height: 48px;
+    padding: 0.75rem 1.15rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    font-size: 0.925rem;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-dialog-btn:active {
+    transform: scale(0.97);
+}
+
+.app-dialog-btn:focus-visible {
+    outline: 2px solid #f8fafc;
+    outline-offset: 2px;
+}
+
+.app-dialog-btn-cancel {
+    background: rgba(30, 41, 59, 0.9);
+    color: #e2e8f0;
+    border: 1px solid rgba(100, 116, 139, 0.45);
+}
+
+.app-dialog-btn-cancel:hover {
+    background: rgba(51, 65, 85, 0.95);
+    filter: brightness(1.05);
+}
+
+.app-dialog-btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, var(--dialog-btn-from, #059669) 0%, var(--dialog-btn-to, #047857) 100%);
+    box-shadow: 0 8px 20px -6px var(--dialog-btn-shadow, rgba(16, 185, 129, 0.55));
+}
+
+.app-dialog-btn-primary:hover {
+    filter: brightness(1.08);
+}
+
+.app-dialog-btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 55%, #9f1239 100%);
+    box-shadow: 0 8px 22px -6px rgba(220, 38, 38, 0.55);
+}
+
+/* Theme tokens via data-variant */
+.app-dialog-card[data-variant="danger"] {
+    --dialog-accent: #f87171;
+    --dialog-accent-2: #fb7185;
+    --dialog-glow: rgba(239, 68, 68, 0.4);
+    --dialog-icon-bg: rgba(239, 68, 68, 0.14);
+    --dialog-icon-border: rgba(248, 113, 113, 0.4);
+    --dialog-icon-ring: rgba(239, 68, 68, 0.1);
+    --dialog-btn-from: #ef4444;
+    --dialog-btn-to: #be123c;
+    --dialog-btn-shadow: rgba(239, 68, 68, 0.5);
+}
+
+.app-dialog-card[data-variant="warning"] {
+    --dialog-accent: #fbbf24;
+    --dialog-accent-2: #f59e0b;
+    --dialog-glow: rgba(245, 158, 11, 0.35);
+    --dialog-icon-bg: rgba(245, 158, 11, 0.14);
+    --dialog-icon-border: rgba(251, 191, 36, 0.4);
+    --dialog-icon-ring: rgba(245, 158, 11, 0.1);
+    --dialog-btn-from: #d97706;
+    --dialog-btn-to: #b45309;
+    --dialog-btn-shadow: rgba(217, 119, 6, 0.5);
+}
+
+.app-dialog-card[data-variant="mode"] {
+    --dialog-accent: #fb923c;
+    --dialog-accent-2: #f97316;
+    --dialog-glow: rgba(249, 115, 22, 0.35);
+    --dialog-icon-bg: rgba(249, 115, 22, 0.14);
+    --dialog-icon-border: rgba(251, 146, 60, 0.4);
+    --dialog-icon-ring: rgba(249, 115, 22, 0.1);
+    --dialog-btn-from: #ea580c;
+    --dialog-btn-to: #c2410c;
+    --dialog-btn-shadow: rgba(234, 88, 12, 0.5);
+}
+
+.app-dialog-card[data-variant="info"] {
+    --dialog-accent: #34d399;
+    --dialog-accent-2: #2dd4bf;
+    --dialog-glow: rgba(16, 185, 129, 0.32);
+    --dialog-icon-bg: rgba(16, 185, 129, 0.14);
+    --dialog-icon-border: rgba(52, 211, 153, 0.4);
+    --dialog-icon-ring: rgba(16, 185, 129, 0.1);
+    --dialog-btn-from: #10b981;
+    --dialog-btn-to: #059669;
+    --dialog-btn-shadow: rgba(16, 185, 129, 0.5);
+}
+
+.app-dialog-card[data-variant="default"] {
+    --dialog-accent: #c8102e;
+    --dialog-accent-2: #f59e0b;
+    --dialog-glow: rgba(200, 16, 46, 0.32);
+    --dialog-icon-bg: rgba(200, 16, 46, 0.14);
+    --dialog-icon-border: rgba(248, 113, 113, 0.35);
+    --dialog-icon-ring: rgba(200, 16, 46, 0.1);
+    --dialog-btn-from: #c8102e;
+    --dialog-btn-to: #9f1239;
+    --dialog-btn-shadow: rgba(200, 16, 46, 0.45);
+}
