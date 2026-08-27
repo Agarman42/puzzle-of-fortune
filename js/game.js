@@ -19,7 +19,8 @@ function startTimeAttackTimer() {
     const display = document.getElementById('timer-display');
     if (display) {
         display.classList.remove('hidden');
-        display.classList.add('flex');
+        display.classList.add('flex', 'is-on');
+        display.classList.remove('is-urgent');
     }
 
     timeAttackInterval = setInterval(() => {
@@ -42,8 +43,8 @@ function stopTimeAttackTimer() {
     const display = document.getElementById('timer-display');
     if (display) {
         display.classList.add('hidden');
-        display.classList.remove('flex', 'bg-red-600/70', 'border-red-500', 'animate-pulse');
-        display.classList.add('bg-red-950/70', 'border-red-800');
+        display.classList.remove('flex', 'is-on', 'is-urgent');
+        display.classList.add('hidden');
     }
 }
 
@@ -55,13 +56,7 @@ function updateTimerDisplay() {
 
     valueEl.textContent = timeAttackSecondsLeft;
 
-    if (timeAttackSecondsLeft <= 10) {
-        display.classList.remove('bg-red-950/70', 'border-red-800');
-        display.classList.add('bg-red-600/70', 'border-red-500', 'text-red-200', 'animate-pulse');
-    } else {
-        display.classList.remove('bg-red-600/70', 'border-red-500', 'text-red-200', 'animate-pulse');
-        display.classList.add('bg-red-950/70', 'border-red-800', 'text-red-400');
-    }
+    display.classList.toggle('is-urgent', timeAttackSecondsLeft <= 10);
 }
 
 
@@ -276,7 +271,7 @@ function useExtraHint() {
     saveGameState();
     btn.disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
-    btn.innerHTML = `<i class="fa-solid fa-lightbulb text-xs"></i> <span class="font-medium">Hint used</span>`;
+    btn.innerHTML = `<i class="fa-solid fa-lightbulb text-[10px]"></i> <span>Clue used</span>`;
 
     updatePotentialPointsUI();
     checkAndUnlockAchievements(); // "use_extra_hint"
@@ -362,7 +357,7 @@ function loadPuzzle(index) {
             extraBtn.classList.remove('hidden');
             extraBtn.disabled = false;
             extraBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            extraBtn.innerHTML = `<i class="fa-solid fa-lightbulb text-xs"></i> <span class="font-medium">Extra hint <span class="text-[10px] opacity-75">(-2)</span></span>`;
+            extraBtn.innerHTML = `<i class="fa-solid fa-lightbulb text-[10px]"></i> <span>Extra clue (−2)</span>`;
 
             // If the hint was already used this session (rare edge case), re-show it
             if (extraHintUsed > 0 && puzzle.extraHint) {
@@ -371,7 +366,7 @@ function loadPuzzle(index) {
                 extraBox.classList.add('block');
                 extraBtn.disabled = true;
                 extraBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                extraBtn.innerHTML = `<i class="fa-solid fa-lightbulb text-xs"></i> <span class="font-medium">Hint used</span>`;
+                extraBtn.innerHTML = `<i class="fa-solid fa-lightbulb text-[10px]"></i> <span>Clue used</span>`;
             }
         } else {
             extraBtn.classList.add('hidden');
@@ -413,17 +408,15 @@ function updateSubmitButton() {
     const span = btn.querySelector('span');
 
     if (fullRevealUsed) {
-        // Change to "Continue" style after full reveal
-        btn.classList.remove('bg-red-600', 'hover:bg-red-700', 'active:bg-red-800');
-        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700', 'active:bg-emerald-800');
+        btn.classList.remove('btn-gold');
+        btn.classList.add('btn-continue');
         if (icon) icon.className = 'fa-solid fa-arrow-right';
         if (span) span.textContent = 'Continue';
     } else {
-        // Normal Submit state
-        btn.classList.add('bg-red-600', 'hover:bg-red-700', 'active:bg-red-800');
-        btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700', 'active:bg-emerald-800');
+        btn.classList.add('btn-gold');
+        btn.classList.remove('btn-continue');
         if (icon) icon.className = 'fa-solid fa-check';
-        if (span) span.textContent = 'Submit Answer';
+        if (span) span.textContent = 'Submit';
     }
 }
 
@@ -438,13 +431,11 @@ function updateNextButton() {
     const span = btn.querySelector('span');
 
     if (isLastPuzzle) {
-        if (span) span.textContent = 'Finish Session';
-        btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
-        btn.classList.add('bg-amber-600', 'hover:bg-amber-700');
+        if (span) span.textContent = 'Finish';
+        btn.classList.add('is-finish');
     } else {
         if (span) span.textContent = 'Next';
-        btn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
-        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+        btn.classList.remove('is-finish');
     }
 }
 
@@ -628,6 +619,8 @@ function submitAnswer() {
 
         // Gentle shake + focus (skip when the session is ending or board was wiped)
         if (!modeCfg.wrongAnswerClearsPuzzle && !modeCfg.endOnMistake) {
+            container.classList.add('board-wrong');
+            setTimeout(() => container.classList.remove('board-wrong'), 400);
             container.style.transition = 'none';
             container.style.transform = 'translateX(3px)';
             setTimeout(() => {

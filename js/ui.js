@@ -10,27 +10,71 @@ function updateAchievementsButton() {
     btnText.textContent = `Achievements (${unlocked}/${total})`;
 }
 
+let pageScrollLocks = 0;
+function lockPageScroll() {
+    pageScrollLocks++;
+    document.body.classList.add('scroll-locked');
+}
+function unlockPageScroll() {
+    pageScrollLocks = Math.max(0, pageScrollLocks - 1);
+    if (pageScrollLocks === 0) document.body.classList.remove('scroll-locked');
+}
+
+function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function countPuzzlesInCategory(value) {
+    if (!Array.isArray(puzzles)) return 0;
+    if (value === 'Mixed Bag') return puzzles.length;
+    return puzzles.filter((p) => p.category === value).length;
+}
+
+function attachFortuneOverlay(overlay) {
+    overlay.classList.add('fortune-overlay');
+    lockPageScroll();
+    const onKey = (e) => {
+        if (e.key !== 'Escape') return;
+        if (document.getElementById('app-dialog')) return;
+        e.preventDefault();
+        overlay.remove();
+    };
+    document.addEventListener('keydown', onKey);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    const nativeRemove = overlay.remove.bind(overlay);
+    overlay.remove = () => {
+        document.removeEventListener('keydown', onKey);
+        unlockPageScroll();
+        nativeRemove();
+    };
+    return overlay;
+}
+
 
 function updateHeaderScore(showLastSession = false) {
     const scoreEl = document.getElementById('header-score');
     const suffixEl = document.getElementById('header-score-suffix');
     if (!scoreEl) return;
 
-    const onStartScreen = !document.getElementById('game-screen').classList.contains('hidden') === false; // rough check
+    const badge = scoreEl.closest('.score-badge');
+    const lastRun = !window.currentSessionPuzzles && lastSessionPoints > 0;
+    if (badge) badge.classList.toggle('is-last-run', lastRun);
 
-    // After a short session on the main menu, show the session result prominently
-    if (!window.currentSessionPuzzles && lastSessionPoints > 0) {
+    if (lastRun) {
         scoreEl.textContent = `+${lastSessionPoints}`;
-        scoreEl.style.color = '#4ade80'; // nice green to indicate "this run"
+        scoreEl.style.color = '';
         if (suffixEl) {
-            suffixEl.textContent = 'last run';
-            suffixEl.className = 'text-xs text-emerald-400 ml-1';
+            suffixEl.textContent = 'last';
+            suffixEl.className = 'score-suffix';
         }
     } else {
         scoreEl.textContent = gameState.score;
         scoreEl.style.color = '';
         if (suffixEl) {
             suffixEl.textContent = '';
+            suffixEl.className = 'score-suffix';
         }
     }
 }
@@ -43,40 +87,35 @@ function showAchievementUnlock(ach) {
 
     const banner = document.createElement('div');
     banner.id = 'achievement-unlock-banner';
-    banner.className = `fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] max-w-sm w-[92%] sm:w-auto 
-                        bg-slate-900 border border-emerald-700 rounded-3xl shadow-2xl shadow-black/50 
-                        flex items-start gap-4 p-4 transition-all duration-300 scale-95 opacity-0`;
+    banner.className = 'flex items-start gap-3 opacity-0';
 
     banner.innerHTML = `
-        <div class="text-4xl mt-0.5">${ach.icon}</div>
+        <div class="text-2xl mt-0.5">${ach.icon}</div>
         <div class="flex-1 min-w-0">
-            <div class="text-emerald-400 text-xs font-semibold tracking-[1.5px] uppercase mb-0.5">Achievement Unlocked</div>
-            <div class="text-white font-semibold text-lg leading-tight">${ach.name}</div>
-            <div class="text-slate-300 text-sm mt-1">${ach.desc}</div>
+            <div class="text-[10px] font-bold tracking-[0.08em] uppercase text-[var(--fortune-gold)] mb-0.5">Unlocked</div>
+            <div class="text-white font-semibold leading-tight">${ach.name}</div>
         </div>
-        <button class="text-slate-400 hover:text-white text-xl leading-none mt-1" onclick="this.closest('#achievement-unlock-banner').remove()">×</button>
+        <button type="button" class="fortune-close !min-h-0 !min-w-0 !text-lg" onclick="this.closest('#achievement-unlock-banner').remove()">×</button>
     `;
 
     document.body.appendChild(banner);
 
     // Trigger entrance animation
     requestAnimationFrame(() => {
-        banner.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-        banner.style.transform = 'translate(-50%, 0)';
+        banner.style.transition = 'opacity 0.2s ease';
         banner.style.opacity = '1';
     });
 
     // Auto-dismiss after 5.5 seconds
     setTimeout(() => {
         if (banner && banner.parentNode) {
-            banner.style.transition = 'all 0.35s ease';
+            banner.style.transition = 'opacity 0.2s ease';
             banner.style.opacity = '0';
-            banner.style.transform = 'translate(-50%, 20px)';
             setTimeout(() => {
                 if (banner && banner.parentNode) banner.parentNode.removeChild(banner);
             }, 350);
         }
-    }, 5500);
+    }, 3200);
 }
 
 
@@ -88,22 +127,30 @@ function updateDailyUI() {
     const today = getTodayDateString();
     const isCompletedToday = gameState.dailyLastDate === today;
 
+    const strip = document.getElementById('daily-today-strip');
     if (gameState.dailyCurrentStreak > 0) {
-        badge.textContent = `${gameState.dailyCurrentStreak}🔥`;
-        badge.style.display = 'inline';
+        badge.textContent = `${gameState.dailyCurrentStreak} day streak`;
+        badge.classList.add('is-on');
+        badge.style.display = '';
     } else {
-        badge.style.display = 'none';
+        badge.textContent = '';
+        badge.classList.remove('is-on');
+        badge.style.display = '';
+    }
+
+    if (strip) {
+        strip.classList.toggle('is-done', isCompletedToday);
+        strip.classList.toggle('is-open', !isCompletedToday);
     }
 
     if (isCompletedToday) {
-        resetText.textContent = "Come back tomorrow for a new daily!";
+        resetText.textContent = 'Solved today · come back tomorrow';
     } else {
-        // Show a hint about today's category
         try {
             const daily = getDailyPuzzle();
-            resetText.innerHTML = `Today's puzzle is from <span class="text-emerald-400">${escapeHtml(daily.category)}</span>`;
+            resetText.textContent = `Today · ${daily.category} · still open`;
         } catch (e) {
-            resetText.textContent = "";
+            resetText.textContent = '';
         }
     }
 }
@@ -123,31 +170,26 @@ function updatePotentialPointsUI() {
     const solvedThisSession = !!sessionSolved[puzzle.id];
 
     if (solvedThisSession) {
-        el.innerHTML = `Done`;
-        el.className = `text-[10px] px-2 py-px rounded-full bg-slate-700/60 text-slate-300 font-medium tabular-nums leading-none flex items-center`;
+        el.textContent = 'Solved';
+        el.className = 'points-pill is-done';
         return;
     }
 
     const potential = computePointsEarned(puzzle, currentRevealsUsed, extraHintUsed, fullRevealUsed);
-    const isPerfect = !fullRevealUsed && (currentRevealsUsed === 0 && extraHintUsed === 0);
-    el.innerHTML = fullRevealUsed 
-        ? `Potential: <span class="font-bold">0</span>` 
-        : `Potential: <span class="font-bold">${potential}</span>`;
-
     if (fullRevealUsed) {
-        el.className = `text-[10px] px-2 py-px rounded-full bg-slate-700/60 text-slate-300 font-medium tabular-nums leading-none flex items-center`;
-    } else if (isPerfect) {
-        el.className = `text-[10px] px-2 py-px rounded-full bg-emerald-900/40 text-emerald-300 font-medium tabular-nums leading-none flex items-center`;
-    } else {
-        el.className = `text-[10px] px-2 py-px rounded-full bg-emerald-900/30 text-emerald-400 font-medium tabular-nums leading-none flex items-center`;
+        el.textContent = '+0';
+        el.className = 'points-pill is-zero';
+        return;
     }
+    el.textContent = `+${potential} if you solve now`;
+    el.className = 'points-pill';
 }
 
 
 function createPuzzleDisplay(puzzle) {
     const container = document.getElementById('puzzle-display');
     container.innerHTML = '';
-    container.className = `puzzle-container rounded-3xl p-5 sm:p-6 min-h-[130px] flex flex-wrap items-center justify-center gap-x-1 gap-y-2`;
+    container.className = 'puzzle-container';
 
     const answer = puzzle.answer;
 
@@ -180,7 +222,8 @@ function createPuzzleDisplay(puzzle) {
                 currentWordDiv = null;
             }
             const spacer = document.createElement('div');
-            spacer.className = 'w-2';
+            spacer.className = 'puzzle-tile space';
+            spacer.setAttribute('aria-hidden', 'true');
             container.appendChild(spacer);
         } else {
             if (!currentWordDiv) {
@@ -194,24 +237,8 @@ function createPuzzleDisplay(puzzle) {
                 const punct = document.createElement('span');
                 punct.className = 'punctuation';
                 punct.textContent = item.char;
-                punct.style.marginLeft = '1px';
-                punct.style.marginRight = '5px';
-                punct.style.fontWeight = '700';
-                punct.style.color = '#713f12';
-
-                if (item.char === ',') {
-                    punct.style.fontSize = '1.5rem';
-                    punct.style.verticalAlign = 'baseline';
-                    punct.style.position = 'relative';
-                    punct.style.top = '15px';
-                } else if (item.char === "'") {
-                    punct.style.fontSize = '1.2rem';
-                    punct.style.verticalAlign = 'super';
-                    punct.style.lineHeight = '0.5';
-                } else {
-                    punct.style.fontSize = '1.2rem';
-                    punct.style.verticalAlign = 'baseline';
-                }
+                if (item.char === ',') punct.classList.add('is-comma');
+                else if (item.char === "'") punct.classList.add('is-apos');
                 currentWordDiv.appendChild(punct);
             } else if (item.revealed) {
                 const tile = document.createElement('div');
@@ -237,6 +264,13 @@ function createPuzzleDisplay(puzzle) {
     if (currentWordDiv) {
         container.appendChild(currentWordDiv);
     }
+
+    const letterCount = charData.filter((c) => c.type === 'letter').length;
+    if (letterCount > 28) container.dataset.size = 'xs';
+    else if (letterCount > 20) container.dataset.size = 'sm';
+    else if (letterCount > 12) container.dataset.size = 'md';
+    else delete container.dataset.size;
+
     setupInteractiveInputs(container);
     return charData;
 }
@@ -379,14 +413,14 @@ function showSuccessModal(puzzle, pointsEarned = 0) {
     const pointsEl = document.getElementById('success-points');
     const accent = getAccentClasses(recap.accent || 'emerald');
     if (circle && iconEl) {
-        circle.className = `mx-auto w-16 h-16 ${accent.iconBg} rounded-full flex items-center justify-center mb-4`;
-        iconEl.className = `fa-solid fa-check-circle ${accent.iconColor} text-5xl`;
+        circle.className = `success-burst ${accent.iconBg}`;
+        iconEl.className = `fa-solid fa-check-circle ${accent.iconColor} text-4xl`;
     }
     if (titleEl) {
-        titleEl.className = `text-2xl font-bold ${accent.title}`;
+        titleEl.className = `heading-font text-2xl ${accent.title}`;
     }
     if (pointsEl) {
-        pointsEl.className = `mt-1 font-medium ${accent.points}`;
+        pointsEl.className = `success-points mt-1 ${accent.points}`;
     }
 
     let pointsText;
@@ -396,10 +430,11 @@ function showSuccessModal(puzzle, pointsEarned = 0) {
         pointsText = `+${pointsEarned} points`;
     }
     if (pointsEl) {
-        pointsEl.textContent = `${pointsText} • ${getSolvedCount()} solved`;
+        pointsEl.textContent = fullRevealUsed ? pointsText : `+${pointsEarned}`;
     }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    lockPageScroll();
     launchSimpleConfetti();
 
     // Update the success modal's Next button if this was the last puzzle
@@ -421,6 +456,11 @@ function showSuccessModal(puzzle, pointsEarned = 0) {
         // Modal may have been closed already
         if (!modal.classList.contains('flex')) return;
         successAdvanceHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                hideSuccessModal();
+                return;
+            }
             if (e.key === ' ' || e.key === 'Enter') {
                 e.preventDefault();
                 clearSuccessAdvanceHandler();
@@ -438,27 +478,28 @@ function hideSuccessModal() {
     const modal = document.getElementById('success-modal');
     modal.classList.remove('flex');
     modal.classList.add('hidden');
-
-    // Refresh the in-game Next button state (important for last puzzle)
+    unlockPageScroll();
     updateNextButton();
 }
 
 
 function launchSimpleConfetti() {
-    const colors = ['#c8102e', '#006341', '#f59e0b', '#ffffff'];
-    for (let i = 0; i < 28; i++) {
+    if (prefersReducedMotion()) return;
+    const colors = ['#E8C547', '#F5D76E', '#FFF6D6', '#34d399'];
+    for (let i = 0; i < 16; i++) {
         setTimeout(() => {
             const conf = document.createElement('div');
             conf.style.position = 'fixed';
             conf.style.left = Math.random() * 100 + 'vw';
             conf.style.top = '-10px';
-            conf.style.width = '8px';
-            conf.style.height = '8px';
+            conf.style.width = '7px';
+            conf.style.height = '7px';
             conf.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
             conf.style.background = colors[Math.floor(Math.random() * colors.length)];
             conf.style.zIndex = '9999';
-            conf.style.opacity = Math.random() + 0.6;
-            conf.style.transition = 'transform 1.1s linear, opacity 1.1s linear';
+            conf.style.pointerEvents = 'none';
+            conf.style.opacity = Math.random() + 0.55;
+            conf.style.transition = 'transform 1.05s linear, opacity 1.05s linear';
             document.body.appendChild(conf);
             const angle = Math.random() * 60 + 30;
             const velocity = Math.random() * 80 + 120;
@@ -466,8 +507,8 @@ function launchSimpleConfetti() {
                 conf.style.transform = `translateY(${velocity}px) rotate(${angle * 3}deg)`;
                 conf.style.opacity = '0';
             }, 50);
-            setTimeout(() => conf.remove(), 1400);
-        }, i * 4);
+            setTimeout(() => conf.remove(), 1300);
+        }, i * 6);
     }
 }
 
@@ -486,54 +527,53 @@ function showProgressModal() {
     let listHTML = '';
 
     if (displayPuzzles.length === 0) {
-        listHTML = `<div class="p-4 text-center text-slate-400">No solved puzzles to show yet.</div>`;
+        listHTML = `<div class="p-6 text-center text-slate-400 text-sm">No phrases solved yet. Start a session and fill this list.</div>`;
     } else {
         displayPuzzles.forEach((p, idx) => {
             const solved = hasActiveSession 
                 ? !!sessionSolved[p.id]
                 : !!gameState.solved[p.id];
-
             const qShort = escapeHtml(p.question.substring(0, 55)) + (p.question.length > 55 ? '...' : '');
             listHTML += `
                 <div onclick="jumpToPuzzle(${p.id}); document.getElementById('progress-modal').remove();" 
-                     class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-800 active:bg-slate-800 ${solved ? 'bg-emerald-900/20' : ''} min-h-[52px]">
-                    <div>
-                        <span class="font-mono text-sm">#${idx + 1} of ${displayPuzzles.length}</span> 
-                        <span class="ml-2">${qShort}</span>
+                     class="flex items-center justify-between p-3 rounded-xl cursor-pointer hover:bg-slate-800/80 min-h-[52px] ${solved ? 'bg-[rgba(232,197,71,0.08)]' : ''}">
+                    <div class="min-w-0 pr-2">
+                        <span class="font-mono text-xs text-slate-500">#${idx + 1}</span>
+                        <span class="ml-2 text-sm">${qShort}</span>
                     </div>
-                    ${solved ? '<i class="fa-solid fa-check text-emerald-400"></i>' : ''}
+                    ${solved ? '<span class="text-[var(--fortune-gold)] text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Solved</span>' : ''}
                 </div>
             `;
         });
     }
 
     const modalHTML = `
-        <div id="progress-modal" onclick="document.getElementById('progress-modal').remove()" 
-             class="fixed inset-0 bg-black/70 z-[60] flex items-end sm:items-center justify-center">
+        <div id="progress-modal" class="fortune-overlay" style="z-index:60">
             <div onclick="event.stopImmediatePropagation()" 
-                 class="bg-slate-900 w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-slate-700 max-h-[85vh] overflow-hidden flex flex-col">
-                <div class="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
+                 class="fortune-modal w-full sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+                <div class="fortune-modal-head">
                     <div>
-                        <div class="font-bold text-xl">${hasActiveSession ? 'Current Session Progress' : 'Lifetime Progress'}</div>
-                        <div class="text-emerald-400 text-sm">
+                        <div class="fortune-modal-title">${hasActiveSession ? 'This session' : 'Progress'}</div>
+                        <div class="text-[var(--fortune-gold)] text-sm mt-0.5">
                             ${hasActiveSession 
-                                ? `${getSolvedCount()} / ${displayPuzzles.length} solved • ${gameState.score} pts`
-                                : `${displayPuzzles.length} puzzles solved • ${gameState.score} pts`}
+                                ? `${getSolvedCount()} / ${displayPuzzles.length} solved · ${gameState.score} pts`
+                                : `${displayPuzzles.length} solved · ${gameState.score} pts`}
                         </div>
                     </div>
-                    <button onclick="document.getElementById('progress-modal').remove()" class="text-2xl leading-none text-slate-400 hover:text-white px-2">&times;</button>
+                    <button type="button" onclick="document.getElementById('progress-modal').remove()" class="fortune-close">&times;</button>
                 </div>
-                <div class="p-4 overflow-auto flex-1 space-y-1 text-sm">
+                <div class="px-4 pb-2 overflow-auto flex-1 space-y-1 text-sm">
                     ${listHTML}
                 </div>
-                <div class="p-4 border-t border-slate-700 bg-slate-950 flex gap-3">
-                    <button onclick="shareScore(); document.getElementById('progress-modal').remove()" class="flex-1 py-3 text-sm font-semibold bg-white text-slate-900 rounded-2xl active:scale-[0.985] transition-all">Share Score</button>
-                    <button onclick="resetProgress(); document.getElementById('progress-modal').remove()" class="px-5 py-3 text-sm font-medium text-red-400 hover:bg-red-950 active:bg-red-950 rounded-2xl border border-red-900/50 active:scale-[0.985] transition-all">Reset</button>
+                <div class="p-4 border-t border-slate-800 flex gap-3">
+                    <button type="button" onclick="shareScore(); document.getElementById('progress-modal').remove()" class="btn-gold flex-1 text-sm">Share score</button>
+                    <button type="button" onclick="resetProgress(); document.getElementById('progress-modal').remove()" class="btn-nav btn-giveup px-4">Reset</button>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+    attachFortuneOverlay(document.getElementById('progress-modal'));
 }
 
 
@@ -543,7 +583,8 @@ function showProgressModal() {
 
 function showGameSetupModal() {
     const setupModal = document.createElement('div');
-    setupModal.className = `fixed inset-0 bg-black/70 z-[80] flex items-end sm:items-center justify-center p-4`;
+    setupModal.className = 'fortune-overlay';
+    setupModal.style.zIndex = '80';
 
     // Use last-used settings if available (persisted from previous sessions)
     const defaultCategory = gameState.lastCategory || "Mixed Bag";
@@ -563,14 +604,19 @@ function showGameSetupModal() {
         modeKeys.forEach(key => {
             const m = GAME_MODES[key];
             const isActive = key === currentSetup.mode;
+            const spicy = key === 'challenge' || key === 'no_mistakes';
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = `px-4 py-2.5 text-sm rounded-2xl border transition-all text-left flex-1 min-w-[110px] min-h-[56px] active:scale-[0.985] ${isActive 
-                ? 'bg-orange-600 border-orange-500 text-white shadow' 
-                : 'bg-slate-800 border-slate-700 hover:bg-slate-700 active:bg-slate-600 text-slate-200'}`;
+            btn.className = `mode-card ${isActive ? 'is-selected' : ''} ${spicy ? 'is-spicy' : ''}`;
+            const mult = m.pointMultiplier === 1 ? '1×' : `${m.pointMultiplier}×`;
             btn.innerHTML = `
-                <div class="font-semibold">${m.name}</div>
-                <div class="text-[10px] opacity-80 mt-0.5 leading-tight">${m.description.split('.')[0]}.</div>
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="font-semibold text-sm">${m.name}</div>
+                        <div class="text-[10px] text-slate-400 leading-tight truncate">${m.description.split('.')[0]}</div>
+                    </div>
+                    <span class="mode-mult">${mult}</span>
+                </div>
             `;
             btn.addEventListener('click', () => {
                 currentSetup.mode = key;
@@ -600,31 +646,18 @@ function showGameSetupModal() {
             const isActive = cat.value === currentSetup.category;
             const card = document.createElement('button');
             card.type = 'button';
+            const count = countPuzzlesInCategory(cat.value);
 
-            // Mobile-friendly: good tap targets + press feedback
-            card.className = `px-2.5 py-2.5 sm:py-2 sm:px-3 text-xs sm:text-sm rounded-2xl border transition-all text-left min-h-[52px] active:scale-[0.985] ${isActive 
-                ? 'bg-orange-600 border-orange-500 text-white shadow ring-1 ring-orange-400' 
-                : 'bg-slate-800 border-slate-700 hover:bg-slate-700 active:bg-slate-600 text-slate-200'}`;
-
-            // Better layout for long labels like "Mixed Bag (Random)"
-            if (cat.hint) {
-                card.innerHTML = `
-                    <div class="flex items-start gap-1.5">
-                        <span class="text-base leading-none mt-0.5">${cat.icon}</span>
-                        <div class="flex-1 min-w-0 leading-tight">
-                            <div class="font-medium">${cat.label}</div>
-                            <div class="text-[10px] opacity-75 -mt-0.5">${cat.hint}</div>
-                        </div>
+            card.className = `setup-card ${isActive ? 'is-selected' : ''}`;
+            card.innerHTML = `
+                <div class="flex items-start gap-1.5">
+                    <span class="text-base leading-none mt-0.5">${cat.icon}</span>
+                    <div class="flex-1 min-w-0 leading-tight">
+                        <div class="font-medium text-[13px]">${cat.label}</div>
+                        <div class="count">${cat.hint ? cat.hint + ' · ' : ''}${count} puzzles</div>
                     </div>
-                `;
-            } else {
-                card.innerHTML = `
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-base">${cat.icon}</span>
-                        <span class="font-medium">${cat.label}</span>
-                    </div>
-                `;
-            }
+                </div>
+            `;
 
             card.addEventListener('click', () => {
                 currentSetup.category = cat.value;
@@ -644,70 +677,50 @@ function showGameSetupModal() {
     }
 
     setupModal.innerHTML = `
-        <div class="w-full max-w-md bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-700 p-5 sm:p-6 max-h-[92vh] overflow-auto">
-            <div class="flex justify-between items-center mb-3">
-                <div class="font-bold text-2xl">New Session</div>
-                <button class="text-3xl leading-none text-slate-400 hover:text-white" onclick="event.target.closest('.fixed').remove()">&times;</button>
+        <div class="fortune-modal w-full max-w-md max-h-[92vh] flex flex-col">
+            <div class="fortune-modal-head">
+                <div class="fortune-modal-title">New Session</div>
+                <button type="button" class="fortune-close" onclick="event.target.closest('.fortune-overlay').remove()">&times;</button>
             </div>
-
-            <!-- Player name (compact) -->
+            <div class="px-5 overflow-auto flex-1">
             <div class="mb-3">
-                <label class="block text-xs uppercase tracking-widest text-slate-400 mb-1">Player Name (optional)</label>
+                <label class="setup-label">Player name (optional)</label>
                 <input id="setup-player-name" type="text" placeholder="Your name" value="${escapeHtml(gameState.playerName || '')}"
-                       class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-2xl text-sm focus:outline-none focus:border-red-500">
+                       class="w-full px-4 py-2 bg-slate-900/70 border border-slate-700 rounded-2xl text-sm focus:outline-none focus:border-[var(--fortune-gold)]">
             </div>
 
-            <!-- Category -->
             <div class="mb-3">
-                <label class="block text-xs uppercase tracking-widest text-slate-400 mb-1.5">Category</label>
-                <div id="setup-category-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <!-- Populated dynamically as nice visual cards -->
-                </div>
+                <label class="setup-label">Category</label>
+                <div id="setup-category-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5"></div>
             </div>
 
-            <!-- Length -->
             <div class="mb-3">
-                <label class="block text-xs uppercase tracking-widest text-slate-400 mb-1">How Many Questions?</label>
-                <div id="setup-length-buttons" class="flex flex-wrap gap-2">
-                    <!-- Populated by JS below for nice active styling -->
-                </div>
+                <label class="setup-label">Length</label>
+                <div id="setup-length-buttons" class="segmented"></div>
             </div>
 
-            <!-- Game Modes (rich cards) -->
             <div class="mb-3">
-                <label class="block text-xs uppercase tracking-widest text-slate-400 mb-1">Game Mode</label>
-                <div id="setup-mode-buttons" class="flex flex-wrap gap-2">
-                    <!-- Populated dynamically -->
-                </div>
+                <label class="setup-label">Mode</label>
+                <div id="setup-mode-buttons" class="grid grid-cols-2 gap-1.5"></div>
                 <div class="text-[10px] text-slate-400 mt-1 min-h-[14px]" id="setup-mode-hint"></div>
             </div>
-
-            <!-- Live summary -->
-            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-sm mb-4">
-                <div class="text-slate-400 text-xs">You'll play</div>
-                <div id="setup-summary" class="font-semibold text-emerald-300"></div>
             </div>
-
-            <div class="flex flex-col gap-3">
-                <button id="setup-launch-btn"
-                        class="w-full py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-3xl flex items-center justify-center gap-x-2 text-lg transition-all">
-                    <i class="fa-solid fa-play"></i>
-                    <span>Launch Session</span>
-                </button>
-                <button onclick="event.target.closest('.fixed').remove()" 
-                        class="w-full py-3 text-sm text-slate-400 hover:text-white active:text-white transition-colors min-h-[44px]">Cancel</button>
+            <div class="px-5 pb-4 pt-2 border-t border-slate-800">
+            <div class="setup-summary mb-2">
+                <div class="hidden sm:block text-[10px] uppercase tracking-widest text-slate-500 mb-0.5">You'll play</div>
+                <div id="setup-summary" class="text-sm sm:text-base"></div>
+            </div>
+            <button type="button" id="setup-launch-btn" class="btn-gold w-full text-base">
+                <i class="fa-solid fa-play text-xs"></i>
+                <span>Start Session</span>
+            </button>
+            <button type="button" onclick="event.target.closest('.fortune-overlay').remove()" class="btn-ghost w-full mt-1">Cancel</button>
             </div>
         </div>
     `;
 
     document.body.appendChild(setupModal);
-
-    // Robust backdrop close handler (only closes if clicking the dark overlay itself)
-    setupModal.addEventListener('click', (e) => {
-        if (e.target === setupModal) {
-            setupModal.remove();
-        }
-    });
+    attachFortuneOverlay(setupModal);
 
     // Post-insert wiring
     const lengthContainer = setupModal.querySelector('#setup-length-buttons');
@@ -716,24 +729,19 @@ function showGameSetupModal() {
     const summaryEl = setupModal.querySelector('#setup-summary');
     const launchBtn = setupModal.querySelector('#setup-launch-btn');
 
-    // Length buttons (recreated for the modal)
-    const lengths = [5,10,20,40,60,80,999];
+    const lengths = [5, 10, 20, 40, 999];
+    if (![5, 10, 20, 40, 999].includes(currentSetup.numQuestions)) {
+        currentSetup.numQuestions = currentSetup.numQuestions >= 80 ? 999 : 40;
+    }
     lengths.forEach(len => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.textContent = len === 999 ? 'All' : len;
-        b.className = `px-4 py-2.5 sm:py-2 text-sm font-medium rounded-2xl border transition-all min-h-[44px] flex items-center justify-center active:scale-[0.985] ${len === currentSetup.numQuestions 
-            ? 'bg-red-600 border-red-500 text-white' 
-            : 'bg-slate-800 border-slate-700 hover:bg-slate-700 active:bg-slate-600 text-slate-200'}`;
+        b.textContent = len === 999 ? 'All' : String(len);
+        if (len === currentSetup.numQuestions) b.classList.add('is-selected');
         b.addEventListener('click', () => {
             currentSetup.numQuestions = len;
-            // re-highlight
-            lengthContainer.querySelectorAll('button').forEach(bb => {
-                bb.classList.remove('bg-red-600', 'border-red-500', 'text-white');
-                bb.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-200');
-            });
-            b.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200');
-            b.classList.add('bg-red-600', 'border-red-500', 'text-white');
+            lengthContainer.querySelectorAll('button').forEach((bb) => bb.classList.remove('is-selected'));
+            b.classList.add('is-selected');
             updateSummary();
         });
         lengthContainer.appendChild(b);
@@ -795,72 +803,47 @@ function showGameSetupModal() {
 
 function showHowToPlay() {
     const modal = document.createElement('div');
-    modal.className = `fixed inset-0 bg-black/70 z-[70] flex items-end sm:items-center justify-center p-4`;
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     modal.innerHTML = `
-        <div class="w-full sm:max-w-md bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-700 p-5 sm:p-6 text-sm max-h-[85vh] overflow-auto">
-            <div class="flex justify-between items-start mb-3">
+        <div class="fortune-modal w-full sm:max-w-md max-h-[85vh] overflow-auto">
+            <div class="fortune-modal-head">
                 <div>
-                    <div class="font-bold text-2xl">How to Play</div>
-                    <div class="text-xs text-slate-400">Phrase puzzle • Score points • Save progress</div>
+                    <div class="fortune-modal-title">How to Play</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Five beats. Then spin the board.</div>
                 </div>
-                <button class="text-3xl leading-none text-slate-400" onclick="event.target.closest('.fixed').remove()">&times;</button>
+                <button type="button" class="fortune-close" onclick="event.target.closest('.fortune-overlay').remove()">&times;</button>
             </div>
-
-            <div class="space-y-4">
+            <div class="px-5 pb-5 space-y-3.5 text-sm text-slate-300">
                 <div>
-                    <div class="font-semibold text-emerald-300 mb-1">1. Start a Session</div>
-                    <div class="text-slate-300">Click <strong>New Session</strong> to pick a category, number of puzzles (5–80 or All), and game mode. Short sessions prefer puzzles you have not seen recently.</div>
+                    <div class="font-semibold text-[var(--fortune-gold)] mb-0.5">Type the phrase</div>
+                    <div>Read the clue, fill the tiles, hit Submit or Enter. Accents and leading “The” still count.</div>
                 </div>
-
                 <div>
-                    <div class="font-semibold text-emerald-300 mb-1">2. Solve the Phrase</div>
-                    <div class="text-slate-300">Read the clue, then type your answer into the tiles. Click any tile to focus it. Press <span class="font-semibold">Submit</span> or hit Enter. Matching is flexible: accents, leading <em>The</em>/<em>A</em>, and many “X or Y” answers are accepted.</div>
+                    <div class="font-semibold text-[var(--fortune-gold)] mb-0.5">Hints cost points</div>
+                    <div>Reveal letter −1 · Extra clue −2 · Give up scores 0.</div>
                 </div>
-
                 <div>
-                    <div class="font-semibold text-emerald-300 mb-1">3. Help When Stuck</div>
-                    <div class="text-slate-300 space-y-1">
-                        <div>• <strong>Reveal a Letter</strong> — Shows every occurrence of a smart letter. <span class="text-amber-400 font-medium">-1 point</span></div>
-                        <div>• <strong>Extra Hint</strong> — One-time clue when available. <span class="text-amber-400 font-medium">-2 points</span></div>
-                        <div>• <strong>Reveal Full Answer</strong> — Shows the whole answer for <span class="text-amber-400 font-medium">0 points</span>.</div>
-                    </div>
+                    <div class="font-semibold text-[var(--fortune-gold)] mb-0.5">Modes change the heat</div>
+                    <div>Challenge 1.5× (no helps). No Mistakes 2×. Time Attack is 60s a puzzle. Marathon ends on a miss.</div>
                 </div>
-
                 <div>
-                    <div class="font-semibold text-emerald-300 mb-1">4. Scoring</div>
-                    <div class="text-slate-300">
-                        Base points: <span class="font-mono text-emerald-400">Easy 8 • Medium 10 • Hard 12</span>.
-                        Reveals cost 1, extra hints cost 2. Mode multipliers apply (Challenge 1.5×, No Mistakes 2×). Minimum 4 points before multipliers unless fully revealed (0).
-                    </div>
+                    <div class="font-semibold text-[var(--fortune-gold)] mb-0.5">Daily streak</div>
+                    <div>One puzzle a day. Come back tomorrow to keep the gold streak alive.</div>
                 </div>
-
                 <div>
-                    <div class="font-semibold text-emerald-300 mb-1">5. Game Modes</div>
-                    <div class="text-slate-300 space-y-1 text-xs sm:text-sm">
-                        <div>• <strong>Normal</strong> — Wrong answers freeze correct letters in place.</div>
-                        <div>• <strong>Challenge</strong> — No helps; wrong answer clears the puzzle (+50% points).</div>
-                        <div>• <strong>Time Attack</strong> — 60 seconds per puzzle.</div>
-                        <div>• <strong>No Mistakes</strong> — One wrong answer ends the session (2× points).</div>
-                        <div>• <strong>Marathon</strong> — Keep going until you miss once.</div>
-                    </div>
+                    <div class="font-semibold text-[var(--fortune-gold)] mb-0.5">Your run is saved</div>
+                    <div>Score, solves, and achievements stay in this browser.</div>
                 </div>
-
-                <div class="text-xs text-slate-400 pt-1 border-t border-slate-700">
-                    Progress, score, and achievements are saved automatically in this browser.
-                </div>
+                <button type="button" onclick="event.target.closest('.fortune-overlay').remove()" class="btn-gold w-full mt-2">Got it</button>
             </div>
-
-            <button onclick="event.target.closest('.fixed').remove()" class="mt-5 w-full py-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 active:scale-[0.985] rounded-2xl text-sm font-medium transition-all">Got it!</button>
         </div>
     `;
     document.body.appendChild(modal);
+    attachFortuneOverlay(modal);
 }
 
 
 function showAchievementsModal() {
     const modal = document.createElement('div');
-    modal.className = `fixed inset-0 bg-black/70 z-[70] flex items-end sm:items-center justify-center p-4`;
 
     const unlockedCount = Object.keys(gameState.achievements).length;
     const total = achievements.length;
@@ -874,23 +857,21 @@ function showAchievementsModal() {
     };
 
     let html = `
-        <div onclick="event.target.remove()" class="w-full sm:max-w-lg bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-700 p-5 sm:p-6 max-h-[85vh] flex flex-col">
-            <div class="flex justify-between items-start mb-4">
+        <div class="fortune-modal w-full sm:max-w-lg max-h-[85vh] flex flex-col" onclick="event.stopImmediatePropagation()">
+            <div class="fortune-modal-head">
                 <div>
-                    <div class="font-bold text-2xl">Achievements</div>
+                    <div class="fortune-modal-title">Achievements</div>
                     <div class="text-sm text-slate-400 mt-0.5">
-                        ${unlockedCount} / ${total} unlocked <span class="text-emerald-400">(${progressPercent}%)</span>
+                        ${unlockedCount} / ${total} unlocked
+                        ${unlockedCount === 0 ? ' · solve a phrase to start' : ` · ${progressPercent}%`}
                     </div>
                 </div>
-                <button class="text-3xl leading-none text-slate-400" onclick="event.target.closest('.fixed').remove()">&times;</button>
+                <button type="button" class="fortune-close" onclick="event.target.closest('.fortune-overlay').remove()">&times;</button>
             </div>
-
-            <!-- Progress bar -->
-            <div class="h-2 bg-slate-800 rounded-full mb-5 overflow-hidden">
-                <div class="h-2 bg-emerald-500 transition-all" style="width: ${progressPercent}%"></div>
+            <div class="px-5">
+            <div class="gold-bar mb-4"><span style="width: ${progressPercent}%"></span></div>
             </div>
-
-            <div class="max-h-[420px] overflow-auto pr-1 space-y-5 text-sm">
+            <div class="px-5 pb-2 overflow-auto flex-1 pr-3 space-y-5 text-sm">
     `;
 
     // Render each tier
@@ -914,23 +895,21 @@ function showAchievementsModal() {
                             <span>${progress.current} / ${progress.target}</span>
                             <span>${pct}%</span>
                         </div>
-                        <div class="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                            <div class="h-1.5 bg-emerald-600 transition-all" style="width: ${pct}%"></div>
-                        </div>
+                        <div class="gold-bar"><span style="width: ${pct}%"></span></div>
                     </div>
                 `;
             }
 
             html += `
-                <div class="flex items-start gap-3 p-3 mb-2 rounded-2xl border ${unlocked ? 'bg-emerald-900/10 border-emerald-800' : 'bg-slate-800/70 border-slate-700'}">
+                <div class="ach-row ${unlocked ? 'is-unlocked' : 'is-locked'}">
                     <div class="text-2xl mt-0.5">${ach.icon}</div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-semibold ${unlocked ? 'text-emerald-300' : 'text-slate-200'}">${ach.name}</div>
+                        <div class="font-semibold ${unlocked ? 'text-[var(--fortune-gold-hi)]' : 'text-slate-300'}">${ach.name}</div>
                         <div class="text-xs text-slate-400 mt-0.5">${ach.desc}</div>
                         ${progressHTML}
                     </div>
-                    <div class="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${unlocked ? 'bg-emerald-800 text-emerald-300' : 'bg-slate-700 text-slate-400'}">
-                        ${unlocked ? 'Unlocked' : tier}
+                    <div class="text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${unlocked ? 'bg-[rgba(232,197,71,0.2)] text-[var(--fortune-gold)]' : 'bg-slate-800 text-slate-500'}">
+                        ${unlocked ? 'Unlocked' : 'Locked'}
                     </div>
                 </div>
             `;
@@ -942,8 +921,8 @@ function showAchievementsModal() {
     html += `
             </div>
 
-            <button onclick="event.target.closest('.fixed').remove()" 
-                    class="mt-5 w-full py-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-700 rounded-2xl text-sm font-medium transition-colors">
+            <button type="button" onclick="event.target.closest('.fortune-overlay').remove()" 
+                    class="mx-5 mb-5 mt-3 btn-nav w-[calc(100%-2.5rem)]">
                 Close
             </button>
         </div>
@@ -951,6 +930,7 @@ function showAchievementsModal() {
 
     modal.innerHTML = html;
     document.body.appendChild(modal);
+    attachFortuneOverlay(modal);
 }
 
 
@@ -970,9 +950,7 @@ function createCategoryBarsHTML(categoryStats) {
                     <span class="text-slate-300">${cat}</span>
                     <span class="font-mono text-slate-400">${s.solved}/${s.total} <span class="text-emerald-400">(${pct}%)</span></span>
                 </div>
-                <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div class="h-2 bg-emerald-500 rounded-full transition-all" style="width: ${barWidth}%"></div>
-                </div>
+                <div class="gold-bar"><span style="width: ${barWidth}%"></span></div>
             </div>
         `;
     }).join('');
@@ -1048,7 +1026,6 @@ function createModeStatsHTML() {
 
 function showStatsDashboard() {
     const modal = document.createElement('div');
-    modal.className = `fixed inset-0 bg-black/70 z-[70] flex items-end sm:items-center justify-center p-4`;
 
     const totalSolved = getLifetimeSolvedCount();
     const avgPoints = totalSolved > 0 ? Math.round(gameState.score / totalSolved) : 0;
@@ -1082,22 +1059,36 @@ function showStatsDashboard() {
     const avgReveals = totalSolved > 0 ? (gameState.lifetimeRevealsUsed / totalSolved).toFixed(1) : '0.0';
     const avgHints = totalSolved > 0 ? (gameState.lifetimeExtraHintsUsed / totalSolved).toFixed(1) : '0.0';
 
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     modal.innerHTML = `
-        <div class="w-full sm:max-w-2xl bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-700 p-5 sm:p-6 max-h-[88vh] flex flex-col overflow-hidden">
-            <div class="flex justify-between items-center mb-4 sm:mb-6 sticky top-0 bg-slate-900 pb-3 sm:pb-4 border-b border-slate-700 z-10">
+        <div class="fortune-modal w-full sm:max-w-2xl max-h-[88vh] flex flex-col overflow-hidden">
+            <div class="fortune-modal-head">
                 <div>
-                    <div class="font-bold text-xl sm:text-2xl">Statistics</div>
-                    <div class="text-xs text-emerald-400">Track your progress across all modes</div>
+                    <div class="fortune-modal-title">Statistics</div>
+                    <div class="text-xs text-slate-400">Your fortune so far</div>
                 </div>
-                <button class="text-3xl text-slate-400 hover:text-white" onclick="event.target.closest('.fixed').remove()">&times;</button>
+                <button type="button" class="fortune-close" onclick="event.target.closest('.fortune-overlay').remove()">&times;</button>
             </div>
 
-            <div class="flex-1 overflow-auto space-y-6 sm:space-y-8 pr-1">
+            <div class="flex-1 overflow-auto space-y-6 px-5 pr-4 pb-2">
+
+            <div class="stat-hero">
+                <div class="stat-hero-card is-gold">
+                    <div class="text-[10px] uppercase tracking-widest text-slate-400">Streak</div>
+                    <div class="text-2xl font-bold tabular-nums mt-1">${gameState.dailyCurrentStreak || 0}</div>
+                </div>
+                <div class="stat-hero-card is-gold">
+                    <div class="text-[10px] uppercase tracking-widest text-slate-400">Solved</div>
+                    <div class="text-2xl font-bold tabular-nums mt-1">${totalSolved}</div>
+                </div>
+                <div class="stat-hero-card is-gold">
+                    <div class="text-[10px] uppercase tracking-widest text-slate-400">Perfect</div>
+                    <div class="text-2xl font-bold tabular-nums mt-1">${perfectPercent}<span class="text-sm font-semibold">%</span></div>
+                </div>
+            </div>
 
             <!-- Lifetime -->
-            <div class="mb-6 sm:mb-8">
-                <div class="uppercase text-xs tracking-[1.5px] text-slate-400 mb-3">Lifetime</div>
+            <div>
+                <div class="setup-label">Lifetime</div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
                         <div class="flex items-center gap-2 text-xs text-slate-400">
@@ -1202,38 +1193,38 @@ function showStatsDashboard() {
                 </div>
             </div>
 
-            <!-- Overall Activity Summary -->
             <div>
-                <div class="uppercase text-xs tracking-[1.5px] text-slate-400 mb-3">Overall Activity</div>
-                <div class="bg-slate-800 rounded-2xl p-4 border border-slate-700 text-sm text-slate-300">
-                    You're building a strong collection of runs across multiple modes. Keep playing to unlock deeper insights here.
+                <div class="setup-label">Overall</div>
+                <div class="rounded-2xl p-4 border border-slate-800 text-sm text-slate-300 bg-[rgba(17,24,39,0.6)]">
+                    ${totalSolved === 0
+                        ? 'No solves yet. Play a session or today’s daily to start your ledger.'
+                        : `Keep the streak alive — longest run is ${gameState.dailyLongestStreak || 0} day${(gameState.dailyLongestStreak || 0) === 1 ? '' : 's'}.`}
                 </div>
             </div>
 
             </div>
 
-            <button onclick="event.target.closest('.fixed').remove()" 
-                    class="mt-6 w-full py-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-2xl text-sm font-medium active:scale-[0.985] transition-all">
+            <button type="button" onclick="event.target.closest('.fortune-overlay').remove()" 
+                    class="m-5 btn-nav">
                 Close
             </button>
         </div>
     `;
 
     document.body.appendChild(modal);
+    attachFortuneOverlay(modal);
 }
 
 
 function showToast(message, duration = 2000) {
     const toast = document.createElement('div');
-    toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-600 text-white px-5 py-3 rounded-2xl shadow-xl text-sm z-[999]`;
-    const span = document.createElement('span');
-    span.textContent = message;
-    toast.appendChild(span);
+    toast.className = 'toast';
+    toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => {
-        toast.style.transition = 'all 0.2s ease';
+        toast.style.transition = 'opacity 0.18s ease';
         toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 200);
+        setTimeout(() => toast.remove(), 180);
     }, duration);
 }
 
@@ -1535,7 +1526,6 @@ function showEndOfListModal() {
 
     const modal = document.createElement("div");
     modal.id = "end-modal";
-    modal.className = `fixed inset-0 bg-black/80 z-[80] flex items-center justify-center p-4`;
 
     const recapInfo = getModeRecapInfo(currentGameMode);
     const modeSubtitle = recapInfo.endSubtitle(solved, total, percent);
@@ -1553,7 +1543,7 @@ function showEndOfListModal() {
 
     modal.innerHTML = `
         <div onclick="event.stopImmediatePropagation()" 
-             class="bg-slate-900 w-full max-w-md rounded-3xl border ${accentBorder} overflow-hidden shadow-2xl">
+             class="fortune-modal w-full max-w-md overflow-hidden ${accentBorder}">
             
             <!-- Themed header -->
             <div class="px-6 pt-6 pb-4 text-center">
@@ -1617,35 +1607,25 @@ function showEndOfListModal() {
                 </div>
             </div>
 
-            <!-- Actions -->
-            <div class="p-4 flex flex-col gap-2 bg-slate-900">
-                <button onclick="shareScore();" 
-                        class="w-full py-3.5 bg-white text-slate-950 font-semibold rounded-2xl flex items-center justify-center gap-x-2 active:scale-[0.985] transition-all">
-                    <i class="fa-solid fa-share-alt"></i>
-                    <span>Share This Run</span>
+            <div class="p-4 flex flex-col gap-2">
+                <button type="button" onclick="shareScore();" class="btn-gold w-full">
+                    <i class="fa-solid fa-share-alt text-xs"></i>
+                    <span>Share this run</span>
                 </button>
-                
                 <div class="grid grid-cols-2 gap-2">
-                    <button onclick="document.getElementById('end-modal').remove(); showProgressModal();" 
-                            class="py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-medium flex items-center justify-center gap-x-2 text-sm">
-                        <i class="fa-solid fa-list-check"></i>
-                        <span>Progress</span>
+                    <button type="button" onclick="replayLastSessionConfig()" class="btn-nav">
+                        <i class="fa-solid fa-redo text-[10px]"></i>
+                        <span>Play again</span>
                     </button>
-                    <button onclick="replayLastSessionConfig()" 
-                            class="py-3 bg-emerald-600 hover:bg-emerald-700 rounded-2xl font-semibold flex items-center justify-center gap-x-2 text-sm text-white">
-                        <i class="fa-solid fa-redo"></i>
-                        <span>Play Again</span>
+                    <button type="button" onclick="finishSessionAndReturn()" class="btn-nav">
+                        Home
                     </button>
                 </div>
-                
-                <button onclick="finishSessionAndReturn()" 
-                        class="w-full py-2.5 text-sm text-slate-400 hover:text-white transition-colors">
-                    Return to Menu
-                </button>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
+    attachFortuneOverlay(modal);
 
     // Celebration for great runs
     if (tier.crown || tier.confettiBoost > 0) {
@@ -1672,59 +1652,44 @@ function showDailyCompleteModal() {
 
     const modal = document.createElement("div");
     modal.id = "daily-complete-modal";
-    modal.className = `fixed inset-0 bg-black/80 z-[80] flex items-center justify-center p-4`;
 
     modal.innerHTML = `
-        <div onclick="event.stopImmediatePropagation()" 
-             class="bg-slate-900 w-full max-w-md rounded-3xl border border-emerald-700 overflow-hidden">
-            
-            <div class="px-6 pt-6 pb-4 text-center bg-gradient-to-b from-emerald-900/20 to-transparent">
-                <div class="mx-auto w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-3">
-                    <i class="fa-solid fa-calendar-check text-3xl text-emerald-400"></i>
+        <div onclick="event.stopImmediatePropagation()" class="fortune-modal w-full max-w-md overflow-hidden">
+            <div class="px-6 pt-6 pb-3 text-center">
+                <div class="success-burst mx-auto mb-3">
+                    <i class="fa-solid fa-calendar-check text-3xl text-[var(--fortune-gold)]"></i>
                 </div>
-                <div class="text-2xl font-bold text-emerald-300">Daily Puzzle Complete!</div>
-                <div class="text-emerald-400 text-sm mt-1">${performance}</div>
+                <div class="heading-font text-2xl">Daily complete</div>
+                <div class="text-slate-400 text-sm mt-1">${performance}</div>
             </div>
 
-            <div class="px-6 py-5 bg-slate-950 border-y border-slate-700">
-                <div class="text-center mb-4">
-                    <div class="text-xs text-slate-400">TODAY'S PUZZLE</div>
-                    <div class="font-semibold text-lg mt-1">${escapeHtml(dailyPuzzle.question)}</div>
-                    <div class="text-xs text-slate-500 mt-1">from ${escapeHtml(dailyPuzzle.category)}</div>
-                </div>
-
-                <div class="flex justify-center gap-8 text-center">
-                    <div>
-                        <div class="text-2xl font-bold text-emerald-400">+${points}</div>
-                        <div class="text-xs text-slate-400">Points Today</div>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-bold">${streak}🔥</div>
-                        <div class="text-xs text-slate-400">Day Streak</div>
-                    </div>
-                    <div>
-                        <div class="text-2xl font-bold text-slate-300">${longest}</div>
-                        <div class="text-xs text-slate-400">Best Streak</div>
-                    </div>
-                </div>
+            <div class="px-6 py-4 text-center">
+                <div class="text-[10px] uppercase tracking-[0.16em] text-slate-500">Streak</div>
+                <div class="streak-prize">${streak}</div>
+                <div class="text-sm text-[var(--fortune-gold)] mt-1">${streak === 1 ? 'day' : 'days'} · best ${longest}</div>
+                <div class="text-sm text-slate-400 mt-3">Come back tomorrow for a new phrase.</div>
             </div>
 
-            <div class="p-4 flex flex-col gap-2 bg-slate-900">
-                <button onclick="shareDailyResult(); document.getElementById('daily-complete-modal').remove();" 
-                        class="w-full py-3 bg-white text-slate-900 font-semibold rounded-2xl flex items-center justify-center gap-x-2">
-                    <i class="fa-solid fa-share-alt"></i>
-                    <span>Share Daily Result</span>
+            <div class="px-6 pb-2 text-center">
+                <div class="text-[10px] uppercase tracking-widest text-slate-500">Today</div>
+                <div class="success-phrase text-lg mt-1">${escapeHtml(dailyPuzzle.question)}</div>
+                <div class="text-xs text-slate-500 mt-1">+${points} pts · ${escapeHtml(dailyPuzzle.category)}</div>
+            </div>
+
+            <div class="p-4 flex flex-col gap-2">
+                <button type="button" onclick="shareDailyResult(); document.getElementById('daily-complete-modal').remove();" class="btn-gold w-full">
+                    <i class="fa-solid fa-share-alt text-xs"></i>
+                    <span>Share daily</span>
                 </button>
-                
-                <button onclick="document.getElementById('daily-complete-modal').remove(); finishSessionAndReturn();" 
-                        class="w-full py-3 text-sm text-slate-400 hover:text-white transition-colors">
-                    Return to Menu
+                <button type="button" onclick="document.getElementById('daily-complete-modal').remove(); finishSessionAndReturn();" class="btn-nav">
+                    Home
                 </button>
             </div>
         </div>
     `;
 
     document.body.appendChild(modal);
+    attachFortuneOverlay(modal);
 }
 
 

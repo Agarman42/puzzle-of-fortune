@@ -1,6 +1,6 @@
 /* Puzzle of Fortune — service worker (app shell + local assets offline) */
 /* Bump CACHE_VERSION when shipping asset changes so clients refresh. */
-const CACHE_VERSION = 'pof-v5';
+const CACHE_VERSION = 'pof-v6';
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 

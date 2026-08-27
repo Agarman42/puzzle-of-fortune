@@ -1,6 +1,6 @@
 // Tailwind script
 function initializeTailwind() {
-    document.documentElement.style.setProperty('--accent', '#c8102e');
+    document.documentElement.style.setProperty('--accent', '#E8C547');
 
     // Inject sexier, subtle dark scrollbars (great on mobile + in modals)
     if (!document.getElementById('polish-scrollbars')) {

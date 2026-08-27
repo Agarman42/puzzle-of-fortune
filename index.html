@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#c8102e">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0B1220">
     <meta name="description" content="Phrase puzzles with multiple modes, daily challenges, and achievements.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,250 +16,190 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-slate-900 text-slate-200">
+<body>
 
-    <!-- Header -->
-    <div class="border-b border-slate-700 bg-slate-950">
-        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-x-3">
-                <div class="w-11 h-11 bg-red-600 rounded-2xl flex items-center justify-center shadow-inner">
-                    <i class="fa-solid fa-puzzle-piece text-white text-3xl"></i>
+    <header class="app-header">
+        <div class="app-shell px-4 py-3 flex items-center justify-between gap-3">
+            <div class="brand-lockup">
+                <div class="brand-mark" aria-hidden="true">
+                    <i class="fa-solid fa-puzzle-piece"></i>
                 </div>
-                <div>
-                    <h1 class="heading-font text-3xl font-bold tracking-tight">Puzzle of Fortune</h1>
-                    <p class="text-xs text-slate-400 -mt-1">Phrase Puzzles</p>
+                <div class="min-w-0">
+                    <h1 class="heading-font brand-title">Puzzle of Fortune</h1>
+                    <p class="brand-kicker">Phrase puzzles</p>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-x-2">
-                <!-- Score -->
-                <div onclick="showProgressModal()" 
-                     class="score-badge px-4 py-1.5 rounded-3xl flex items-center gap-x-2 cursor-pointer active:scale-95 transition-transform">
-                    <i class="fa-solid fa-tachometer-alt text-sm"></i>
-                    <div>
-                        <span id="header-score" class="font-bold text-lg tabular-nums">0</span>
-                        <span id="header-score-suffix" class="text-xs opacity-75 ml-1"></span>
-                    </div>
+
+            <div class="header-actions">
+                <div class="score-badge" aria-label="Score">
+                    <span class="score-kicker">SCORE</span>
+                    <span>
+                        <span id="header-score" class="score-value tabular-nums">0</span>
+                        <span id="header-score-suffix" class="score-suffix"></span>
+                    </span>
                 </div>
-                
-                <button onclick="showProgressModal()" 
-                        class="px-3 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 transition-colors rounded-2xl flex items-center gap-x-2 border border-slate-700">
-                    <i class="fa-solid fa-list-check"></i>
-                    <span class="hidden sm:inline text-sm">Progress</span>
+                <button type="button" onclick="showProgressModal()" class="btn-progress">
+                    <i class="fa-solid fa-list-check text-xs"></i>
+                    <span class="hidden sm:inline">Progress</span>
                 </button>
             </div>
         </div>
-    </div>
+    </header>
 
-    <div class="max-w-3xl mx-auto px-4 pt-6 pb-12">
-        
-        <!-- Welcome / Start Screen -->
-        <div id="start-screen">
-            <div class="text-center py-8">
-                <!-- Hero -->
-                <div class="inline-flex items-center justify-center w-20 h-20 bg-red-600/10 rounded-full mb-5">
-                    <i class="fa-solid fa-puzzle-piece text-red-500 text-6xl"></i>
+    <div class="app-shell">
+
+        <div id="start-screen" class="start-stage">
+            <div class="hero-stage">
+                <div class="hero-glow" aria-hidden="true"></div>
+                <div class="brand-mark hero-mark" aria-hidden="true">
+                    <i class="fa-solid fa-puzzle-piece"></i>
                 </div>
-                
-                <h2 class="heading-font text-4xl font-bold tracking-tighter mb-2">Solve the world's<br>best kept phrases</h2>
-                <p class="text-slate-400 max-w-sm mx-auto text-sm">Phrase puzzles with multiple modes, streaks, and achievements.</p>
-                
-                <!-- Primary CTA: opens the clean Game Setup modal -->
-                <div class="mt-7 flex flex-col items-center gap-y-2">
-                    <button onclick="showGameSetupModal()" 
-                            class="px-12 py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 transition-all text-white font-bold rounded-3xl flex items-center justify-center gap-x-3 text-xl shadow-lg shadow-red-950/50">
-                        <i class="fa-solid fa-play mr-1"></i> 
+                <h2 class="heading-font text-[2.05rem] sm:text-4xl font-bold tracking-tight leading-[1.12]">
+                    Solve the world’s<br>best kept phrases
+                </h2>
+                <p class="hero-copy">Guess the phrase from the clue. Hints cost points. Daily streaks pay in gold.</p>
+
+                <div class="cta-stack">
+                    <button type="button" onclick="showGameSetupModal()" class="btn-gold btn-gold-lg">
+                        <i class="fa-solid fa-play text-sm"></i>
                         <span>New Session</span>
                     </button>
-                    
-                    <!-- Quick one-tap preset to reduce the +1 click cost for the most common case -->
-                    <button onclick="quickStartNormal10()" 
-                            class="text-xs px-4 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl text-slate-300 transition-colors">
-                        Quick: 10 Normal (Mixed Bag)
-                    </button>
-                </div>
 
-                <!-- Daily Puzzle – kept prominent and one-tap -->
-                <div class="mt-6 text-center">
-                    <button onclick="startDailyPuzzle()" 
-                            class="px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded-3xl flex items-center justify-center gap-x-3 mx-auto text-base shadow-lg shadow-emerald-950/50 transition-all active:scale-[0.985]">
+                    <button type="button" onclick="startDailyPuzzle()" class="btn-daily">
                         <i class="fa-solid fa-calendar-day"></i>
                         <span>Daily Puzzle</span>
-                        <span id="daily-streak-badge" class="ml-2 px-2 py-0.5 text-xs bg-white/20 rounded-full font-medium"></span>
+                        <span id="daily-streak-badge" class="streak-pill"></span>
                     </button>
-                    <div id="daily-reset-text" class="text-xs text-emerald-400 mt-1 min-h-[14px]"></div>
+                    <div id="daily-today-strip" class="daily-strip">
+                        <span id="daily-reset-text"></span>
+                    </div>
+
+                    <button type="button" onclick="quickStartNormal10()" class="btn-ghost">
+                        Quick: 10 Normal
+                    </button>
                 </div>
 
-                <!-- Compact secondary actions (less visual weight now that setup is in the modal) -->
-                <div class="mt-6 flex flex-wrap justify-center gap-2 text-sm">
-                    <button onclick="showHowToPlay()" 
-                            class="px-4 py-2 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 active:bg-slate-700 transition-colors font-medium rounded-2xl flex items-center justify-center gap-x-2 border border-slate-700 min-h-[40px] active:scale-[0.985]">
-                        <i class="fa-solid fa-question-circle"></i>
+                <div class="toolbar">
+                    <button type="button" onclick="showHowToPlay()" class="toolbar-btn">
+                        <i class="fa-solid fa-question-circle text-xs opacity-80"></i>
                         <span>How to Play</span>
                     </button>
-
-                    <button id="achievements-btn" onclick="showAchievementsModal()" 
-                            class="px-4 py-2 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 active:bg-slate-700 transition-colors font-medium rounded-2xl flex items-center justify-center gap-x-2 border border-slate-700 min-h-[40px] active:scale-[0.985]">
-                        <i class="fa-solid fa-trophy"></i>
+                    <button type="button" id="achievements-btn" onclick="showAchievementsModal()" class="toolbar-btn">
+                        <i class="fa-solid fa-trophy text-xs opacity-80"></i>
                         <span id="achievements-btn-text">Achievements</span>
                     </button>
-
-                    <button onclick="showStatsDashboard()" 
-                            class="px-4 py-2 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 active:bg-slate-700 transition-colors font-medium rounded-2xl flex items-center justify-center gap-x-2 border border-slate-700 min-h-[40px] active:scale-[0.985]">
-                        <i class="fa-solid fa-chart-bar"></i>
+                    <button type="button" onclick="showStatsDashboard()" class="toolbar-btn">
+                        <i class="fa-solid fa-chart-bar text-xs opacity-80"></i>
                         <span>Stats</span>
                     </button>
                 </div>
 
-                <div class="mt-5 text-[10px] text-slate-500 flex items-center justify-center gap-x-1.5">
+                <div class="install-hint">
                     <i class="fa-solid fa-mobile-alt"></i>
-                    <span>Works great on phones • Add to home screen</span>
+                    <span>Works great on phones · Add to Home Screen</span>
                 </div>
             </div>
         </div>
 
-        <!-- Game Screen -->
-        <div id="game-screen" class="hidden">
-            <!-- Progress header (mobile-friendly) -->
-            <div class="flex flex-wrap items-center justify-between gap-y-2 mb-4 px-1">
-                <div class="flex items-center gap-x-2 sm:gap-x-3 min-w-0">
-                    <button onclick="quitToMenu()" 
-                            class="flex items-center gap-x-1.5 px-2.5 py-1.5 sm:px-3 text-sm bg-slate-800 hover:bg-slate-700 active:bg-slate-700 border border-slate-700 rounded-2xl transition-all active:scale-[0.985]">
-                        <i class="fa-solid fa-arrow-left text-xs"></i>
-                        <span class="text-xs font-medium">Menu</span>
+        <div id="game-screen" class="hidden play-wrap">
+            <div class="status-bar">
+                <div class="status-left min-w-0">
+                    <button type="button" onclick="quitToMenu()" class="btn-menu">
+                        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                        <span>Menu</span>
                     </button>
-                    
                     <div class="min-w-0">
-                        <div class="text-xs sm:text-sm font-medium text-slate-300">Puzzle <span id="current-puzzle-num">12</span> <span class="text-slate-500">of <span id="total-puzzles">80</span></span></div>
-                        <div class="flex items-center gap-x-1.5 sm:gap-x-2">
-                            <div id="puzzle-status" class="text-[10px] sm:text-xs"></div>
-                            <div id="game-mode-badge" 
-                                 class="hidden text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-px rounded-full font-semibold bg-slate-800 text-slate-300 border border-slate-700"></div>
+                        <div class="text-xs font-semibold text-slate-200">
+                            Puzzle <span id="current-puzzle-num">1</span>
+                            <span class="text-slate-500">of <span id="total-puzzles">10</span></span>
+                        </div>
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <div id="puzzle-status" class="text-[10px] truncate"></div>
+                            <div id="game-mode-badge" class="hidden text-[9px] px-1.5 py-px rounded-full font-semibold bg-slate-800 text-slate-300 border border-slate-700"></div>
                         </div>
                     </div>
-
-                    <!-- Time Attack per-puzzle timer -->
-                    <div id="timer-display"
-                         class="hidden items-center gap-x-1.5 px-2.5 py-1 sm:px-3 bg-red-950/70 border border-red-800 rounded-2xl text-red-400 font-mono text-sm font-semibold tabular-nums"
-                         title="Time Attack: seconds remaining for this puzzle">
+                    <div id="timer-display" class="timer-chip" title="Time Attack: seconds remaining for this puzzle">
                         <i class="fa-solid fa-stopwatch text-xs"></i>
                         <span id="timer-value">60</span>
                     </div>
                 </div>
-                
-                <div class="flex items-center gap-x-2 sm:gap-x-3 text-right">
-                    <button onclick="showStatsDashboard()" 
-                            class="px-2.5 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 active:bg-slate-700 border border-slate-700 rounded-2xl flex items-center gap-x-1.5 transition-all active:scale-[0.985]">
-                        <i class="fa-solid fa-chart-bar text-sm"></i>
-                        <span class="hidden sm:inline text-xs">Stats</span>
-                    </button>
-
-                    <div>
-                        <div class="text-[10px] sm:text-xs text-slate-400">SOLVED</div>
-                        <div class="font-mono text-lg sm:text-xl font-semibold tabular-nums"><span id="solved-count">0</span><span class="text-slate-500">/ <span id="total-solved">80</span></span></div>
+                <div class="status-right">
+                    <div class="solved-chip">
+                        <div class="k">SOLVED</div>
+                        <div class="v text-base"><span id="solved-count">0</span><span class="text-slate-500">/<span id="total-solved">10</span></span></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Hint / Question (mobile tuned) -->
-            <div class="mb-4 sm:mb-5">
-                <div class="flex items-center gap-x-2 mb-1 px-1">
-                    <i class="fa-solid fa-lightbulb text-amber-400"></i>
-                    <span class="uppercase tracking-[1.5px] text-[10px] sm:text-xs font-semibold text-amber-300">THE HINT</span>
+            <div class="mb-4">
+                <div class="hint-kicker">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <span>THE HINT</span>
                 </div>
-                <div id="hint-text" 
-                     class="bg-slate-800 border border-slate-700 rounded-3xl px-4 py-3 sm:px-5 sm:py-4 text-sm sm:text-[15px] leading-snug">
-                    <!-- JS injected -->
-                </div>
-                <div id="extra-hint-box" class="hidden mt-2 px-4 py-3 bg-amber-900/20 border border-amber-800 rounded-3xl text-amber-200 text-sm">
-                    <!-- Populated by useExtraHint() -->
-                </div>
+                <div id="hint-text" class="hint-plaque"></div>
+                <div id="extra-hint-box" class="extra-hint-plaque hidden"></div>
             </div>
 
-            <!-- Puzzle Display -->
-            <div class="mb-6">
-                <div class="flex items-center justify-between px-1 mb-2">
-                    <div class="flex items-center gap-x-2">
-                        <div class="uppercase tracking-widest text-xs font-semibold text-slate-400">THE PHRASE</div>
-                        <div id="potential-points" 
-                             class="text-[10px] px-2 py-px rounded-full bg-emerald-900/30 text-emerald-400 font-medium tabular-nums leading-none flex items-center"
-                             title="Points you'll receive if you solve correctly right now">
-                            <!-- Populated by JS -->
-                        </div>
+            <div class="mb-5">
+                <div class="phrase-head">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="phrase-kicker">THE PHRASE</div>
+                        <div id="potential-points" class="points-pill" title="Points you'll receive if you solve correctly right now"></div>
                     </div>
-                    <div class="flex items-center gap-x-2">
-                        <button id="reveal-btn" onclick="revealRandomLetter()" 
-                                class="text-xs sm:text-sm flex items-center gap-x-1.5 px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 active:scale-[0.985] transition-all rounded-2xl border border-slate-700 text-amber-300 min-h-[40px]">
-                            <i class="fa-solid fa-eye text-xs"></i>
-                            <span class="font-medium">Reveal</span>
+                    <div class="help-row">
+                        <button type="button" id="reveal-btn" onclick="revealRandomLetter()" class="btn-help">
+                            <i class="fa-solid fa-eye text-[10px]"></i>
+                            <span>Reveal letter (−1)</span>
                         </button>
-                        <button id="extra-hint-btn"
-                                onclick="useExtraHint()"
-                                class="hidden text-xs sm:text-sm flex items-center gap-x-1.5 px-3.5 py-2 sm:py-1.5 bg-amber-900/40 hover:bg-amber-900/60 active:bg-amber-900/70 active:scale-[0.985] transition-all rounded-2xl border border-amber-800 text-amber-300 min-h-[40px]">
-                            <i class="fa-solid fa-lightbulb text-xs"></i>
-                            <span class="font-medium">Hint <span class="text-[10px] opacity-75">(-2)</span></span>
+                        <button type="button" id="extra-hint-btn" onclick="useExtraHint()" class="btn-help hidden">
+                            <i class="fa-solid fa-lightbulb text-[10px]"></i>
+                            <span>Extra clue (−2)</span>
                         </button>
                     </div>
                 </div>
-                
-                <div id="puzzle-display" 
-                     class="puzzle-container rounded-3xl p-4 sm:p-6 min-h-[130px] sm:min-h-[138px] flex items-center justify-center">
-                    <!-- Letter tiles injected by JS -->
-                </div>
+                <div id="puzzle-display" class="puzzle-container"></div>
             </div>
 
-            <!-- Action buttons -->
-            <div class="grid grid-cols-2 gap-3">
-                <button id="submit-btn" onclick="submitAnswer()" 
-                        class="col-span-1 py-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold rounded-3xl flex items-center justify-center gap-x-2 text-base transition-all">
+            <div class="play-actions">
+                <button type="button" id="submit-btn" onclick="submitAnswer()" class="btn-gold w-full text-base">
                     <i class="fa-solid fa-check"></i>
-                    <span>Submit Answer</span>
+                    <span>Submit</span>
                 </button>
-                
-                <div class="grid grid-cols-3 gap-2">
-                    <button onclick="prevPuzzle()" 
-                            class="py-3 text-sm font-medium bg-slate-800 hover:bg-slate-700 active:bg-slate-700 border border-slate-700 rounded-3xl flex items-center justify-center gap-x-1.5 transition-all active:scale-[0.97]">
-                        <i class="fa-solid fa-arrow-left"></i>
-                        <span class="text-xs">Prev</span>
+                <div class="play-nav">
+                    <button type="button" onclick="prevPuzzle()" class="btn-nav">
+                        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                        <span>Prev</span>
                     </button>
-                    
-                    <button id="full-reveal-btn" onclick="revealFullAnswerWithConfirm()" 
-                            class="py-3 text-sm font-medium bg-amber-900/30 hover:bg-amber-900/40 active:bg-amber-900/50 text-amber-300 border border-amber-800 rounded-3xl flex items-center justify-center gap-x-1.5 transition-all active:scale-[0.97]">
-                        <i class="fa-solid fa-eye"></i>
-                        <span class="text-xs">Reveal</span>
+                    <button type="button" id="full-reveal-btn" onclick="revealFullAnswerWithConfirm()" class="btn-nav btn-giveup">
+                        <span>Give up</span>
                     </button>
-                    
-                    <button id="next-btn" onclick="nextPuzzle()" 
-                            class="py-3 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-3xl flex items-center justify-center gap-x-1 transition-all active:scale-[0.97]">
-                        <span class="text-xs">Next</span>
-                        <i class="fa-solid fa-arrow-right"></i>
+                    <button type="button" id="next-btn" onclick="nextPuzzle()" class="btn-nav next">
+                        <span>Next</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Success Toast / Modal -->
-        <div id="success-modal" onclick="if (event.target.id === 'success-modal') hideSuccessModal()" 
-             class="hidden fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50">
-            <div onclick="event.stopImmediatePropagation()" 
-                 class="modal bg-slate-900 w-full sm:w-[380px] rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 border border-slate-700">
+        <div id="success-modal" onclick="if (event.target.id === 'success-modal') hideSuccessModal()"
+             class="hidden fortune-overlay" style="z-index:50">
+            <div onclick="event.stopImmediatePropagation()"
+                 class="fortune-modal w-full sm:w-[400px] p-5 sm:p-6">
                 <div class="text-center">
-                    <div id="success-icon-circle" class="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                        <i id="success-icon" class="fa-solid fa-check-circle text-emerald-400 text-4xl sm:text-5xl"></i>
+                    <div id="success-icon-circle" class="success-burst">
+                        <i id="success-icon" class="fa-solid fa-check-circle text-emerald-400 text-4xl"></i>
                     </div>
-                    <h3 id="success-title" class="text-xl sm:text-2xl font-bold text-emerald-400">Nailed it!</h3>
-                    <p id="success-points" class="mt-1 font-medium text-emerald-300 text-sm sm:text-base">+10 points</p>
-                    
-                    <div class="my-4 sm:my-5 text-left bg-slate-950 rounded-2xl p-3 sm:p-4 border border-slate-800">
-                        <div class="text-xs text-slate-400 mb-1">THE ANSWER</div>
-                        <div id="success-answer" class="font-semibold text-base sm:text-lg text-white"></div>
+                    <h3 id="success-title" class="heading-font text-2xl text-emerald-400">Nailed it!</h3>
+                    <p id="success-points" class="success-points mt-1">+10</p>
+                    <div class="my-4 text-left rounded-2xl p-4 border border-[var(--hairline-slate)] bg-[rgba(7,11,24,0.55)]">
+                        <div class="phrase-kicker mb-1">THE ANSWER</div>
+                        <div id="success-answer" class="success-phrase"></div>
                     </div>
-                    
-                    <div class="flex gap-3">
-                        <button id="success-next-btn" onclick="hideSuccessModal(); nextPuzzle();" 
-                                class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-2xl font-semibold text-sm">Next Puzzle</button>
-                        <button onclick="hideSuccessModal()" 
-                                class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl font-medium text-sm">Stay here</button>
+                    <div class="flex flex-col gap-2">
+                        <button type="button" id="success-next-btn" onclick="hideSuccessModal(); nextPuzzle();" class="btn-gold w-full">
+                            Next Puzzle
+                        </button>
+                        <button type="button" onclick="hideSuccessModal()" class="btn-ghost w-full">Stay here</button>
                     </div>
                 </div>
             </div>
@@ -267,18 +207,6 @@
 
     </div>
 
-    <!-- Bottom nav hint -->
-    <div class="max-w-3xl mx-auto px-4 pb-6">
-        <div class="text-center">
-            <button onclick="showProgressModal()" 
-                    class="text-xs text-slate-400 hover:text-slate-300 flex items-center gap-x-1 mx-auto">
-                <i class="fa-solid fa-chart-bar text-xs"></i>
-                <span>View all puzzles &amp; your progress</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Module scripts: classic (non-module) so onclick handlers stay global -->
     <script src="js/data/puzzles.js"></script>
     <script src="js/scoring.js"></script>
     <script src="js/state.js"></script>
