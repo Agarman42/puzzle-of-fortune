@@ -24,6 +24,19 @@ function prefersReducedMotion() {
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
+function shouldAutofocusTiles() {
+    if (window.matchMedia('(pointer: coarse)').matches) return false;
+    if (window.matchMedia('(max-width: 640px)').matches) return false;
+    return true;
+}
+
+function puzzleLockedThisSession() {
+    const sessionPuzzles = window.currentSessionPuzzles || puzzles;
+    if (!sessionPuzzles || currentPuzzleIndex < 0 || currentPuzzleIndex >= sessionPuzzles.length) return false;
+    const puzzle = sessionPuzzles[currentPuzzleIndex];
+    return !!(sessionSolved[puzzle.id] || fullRevealUsed || timeUpUsed);
+}
+
 function countPuzzlesInCategory(value) {
     if (!Array.isArray(puzzles)) return 0;
     if (value === 'Mixed Bag') return puzzles.length;
@@ -32,6 +45,7 @@ function countPuzzlesInCategory(value) {
 
 function attachFortuneOverlay(overlay) {
     overlay.classList.add('fortune-overlay');
+    dismissToasts();
     lockPageScroll();
     const onKey = (e) => {
         if (e.key !== 'Escape') return;
@@ -143,8 +157,13 @@ function updateDailyUI() {
         strip.classList.toggle('is-open', !isCompletedToday);
     }
 
+    const dailyBtn = document.getElementById('daily-btn');
+    const dailyLabel = document.getElementById('daily-btn-label');
+    if (dailyBtn) dailyBtn.classList.toggle('is-done', isCompletedToday);
+    if (dailyLabel) dailyLabel.textContent = isCompletedToday ? 'Come back tomorrow' : 'Daily Puzzle';
+
     if (isCompletedToday) {
-        resetText.textContent = 'Solved today · come back tomorrow';
+        resetText.textContent = 'Solved today · streak saved';
     } else {
         try {
             const daily = getDailyPuzzle();
@@ -228,7 +247,7 @@ function createPuzzleDisplay(puzzle) {
         } else {
             if (!currentWordDiv) {
                 currentWordDiv = document.createElement('div');
-                currentWordDiv.className = 'word-group flex';
+                currentWordDiv.className = 'word-group';
                 currentWordDiv.style.gap = '4px';
                 currentWordDiv.style.marginRight = '8px';
             }
@@ -279,10 +298,12 @@ function createPuzzleDisplay(puzzle) {
 function setupInteractiveInputs(container) {
     const inputs = Array.from(container.querySelectorAll('input.puzzle-tile'));
     if (inputs.length === 0) return;
-    setTimeout(() => {
-        const firstEmpty = inputs.find(inp => !inp.value);
-        if (firstEmpty && document.activeElement.tagName !== 'INPUT') firstEmpty.focus();
-    }, 60);
+    if (shouldAutofocusTiles()) {
+        setTimeout(() => {
+            const firstEmpty = inputs.find(inp => !inp.value);
+            if (firstEmpty && document.activeElement.tagName !== 'INPUT') firstEmpty.focus();
+        }, 60);
+    }
     inputs.forEach((input, index) => {
         // Ensure click focuses and selects this specific tile (core UX request)
         input.addEventListener('click', () => {
@@ -304,10 +325,12 @@ function setupInteractiveInputs(container) {
             // Ignore spaces entirely - they should not advance or stay in the tile
             if (e.target.value === ' ' || e.target.value === '') {
                 e.target.value = '';
+                e.target.classList.remove('is-typed');
                 return;
             }
             // Keep a single uppercase character
             e.target.value = e.target.value.slice(-1).toUpperCase();
+            e.target.classList.toggle('is-typed', !!e.target.value);
             if (e.target.value) {
                 const nextInput = inputs[index + 1];
                 if (nextInput) {
@@ -329,11 +352,19 @@ function setupInteractiveInputs(container) {
                 }
             }
 
-            if (e.key === 'Backspace' && !input.value && index > 0) {
-                const prevInput = inputs[index - 1];
-                if (prevInput) {
+            if (e.key === 'Backspace') {
+                if (input.value) {
+                    input.value = '';
+                    input.classList.remove('is-typed');
+                    e.preventDefault();
+                    return;
+                }
+                if (index > 0) {
+                    const prevInput = inputs[index - 1];
+                    prevInput.value = '';
+                    prevInput.classList.remove('is-typed');
                     prevInput.focus();
-                    prevInput.select();
+                    e.preventDefault();
                 }
             }
             if (e.key === 'ArrowRight') {
@@ -434,6 +465,7 @@ function showSuccessModal(puzzle, pointsEarned = 0) {
     }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    dismissToasts();
     lockPageScroll();
     launchSimpleConfetti();
 
@@ -527,7 +559,7 @@ function showProgressModal() {
     let listHTML = '';
 
     if (displayPuzzles.length === 0) {
-        listHTML = `<div class="p-6 text-center text-slate-400 text-sm">No phrases solved yet. Start a session and fill this list.</div>`;
+        listHTML = `<div class="p-6 text-center text-slate-400 text-sm">Solve your first puzzle to fill this list.</div>`;
     } else {
         displayPuzzles.forEach((p, idx) => {
             const solved = hasActiveSession 
@@ -863,7 +895,7 @@ function showAchievementsModal() {
                     <div class="fortune-modal-title">Achievements</div>
                     <div class="text-sm text-slate-400 mt-0.5">
                         ${unlockedCount} / ${total} unlocked
-                        ${unlockedCount === 0 ? ' · solve a phrase to start' : ` · ${progressPercent}%`}
+                        ${unlockedCount === 0 ? ' · solve your first puzzle' : ` · ${progressPercent}%`}
                     </div>
                 </div>
                 <button type="button" class="fortune-close" onclick="event.target.closest('.fortune-overlay').remove()">&times;</button>
@@ -1197,7 +1229,7 @@ function showStatsDashboard() {
                 <div class="setup-label">Overall</div>
                 <div class="rounded-2xl p-4 border border-slate-800 text-sm text-slate-300 bg-[rgba(17,24,39,0.6)]">
                     ${totalSolved === 0
-                        ? 'No solves yet. Play a session or today’s daily to start your ledger.'
+                        ? 'Solve your first puzzle to start this ledger.'
                         : `Keep the streak alive — longest run is ${gameState.dailyLongestStreak || 0} day${(gameState.dailyLongestStreak || 0) === 1 ? '' : 's'}.`}
                 </div>
             </div>
@@ -1216,9 +1248,16 @@ function showStatsDashboard() {
 }
 
 
-function showToast(message, duration = 2000) {
+function dismissToasts() {
+    document.querySelectorAll('.toast').forEach((el) => el.remove());
+}
+
+function showToast(message, duration = 1600) {
+    dismissToasts();
     const toast = document.createElement('div');
     toast.className = 'toast';
+    const playing = document.getElementById('game-screen') && !document.getElementById('game-screen').classList.contains('hidden');
+    if (playing) toast.classList.add('toast-play');
     toast.textContent = message;
     document.body.appendChild(toast);
     setTimeout(() => {
@@ -1286,6 +1325,7 @@ function showAppDialog({
         const iconName = resolveDialogIcon(theme, icon);
         let settled = false;
 
+        dismissToasts();
         const overlay = document.createElement('div');
         overlay.id = 'app-dialog';
         overlay.className = 'app-dialog-overlay';
@@ -1409,41 +1449,32 @@ function showConfirm(message, options = {}) {
 }
 
 
-function shareScore() {
-    const sessionPuzzles = window.currentSessionPuzzles || puzzles;
-    const solved = getSolvedCount();
-    const total = sessionPuzzles.length;
-    const percent = total > 0 ? Math.round((solved / total) * 100) : 0;
-    const category = selectedCategory || "a session";
-    const modeKey = currentGameMode || 'normal';
-    const recap = getModeRecapInfo(modeKey);
-    const modeLabel = recap.shortName || 'Session';
-    const tier = getPerformanceTier(solved, total, perfectSolvesThisSession, sessionRevealsUsed, sessionExtraHintsUsed, modeKey);
-
-    let perfLine = '';
-    if (perfectSolvesThisSession > 0) {
-        perfLine = `\n👑 ${perfectSolvesThisSession} perfect solve${perfectSolvesThisSession > 1 ? 's' : ''}`;
-    }
-    if (tier.crown && perfectSolvesThisSession === solved) {
-        perfLine = `\n👑 PERFECT RUN — no helps!`;
-    }
-
-    const text = 
-`🧩 ${modeLabel} Run Complete!
-+${sessionPointsEarned} points • ${solved}/${total} solved (${percent}%)${perfLine}
-${tier.tier} — ${tier.flavor}
-
-Play Puzzle of Fortune!`;
-
+function copyShareText(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(() => {
-            showToast("Run copied to clipboard! 📋");
+            showToast("Copied.");
         }).catch(() => {
             fallbackShare(text);
         });
     } else {
         fallbackShare(text);
     }
+}
+
+function shareScore() {
+    const hasSession = !!window.currentSessionPuzzles;
+    let text;
+    if (hasSession) {
+        const solved = getSolvedCount();
+        const total = window.currentSessionPuzzles.length;
+        const modeName = (GAME_MODES[currentGameMode] || GAME_MODES.normal).name;
+        const cat = selectedCategory || 'Session';
+        text = `Puzzle of Fortune · ${cat} · ${modeName}\n+${sessionPointsEarned} pts · ${solved}/${total} solved`;
+    } else {
+        const solved = typeof getLifetimeSolvedCount === 'function' ? getLifetimeSolvedCount() : getSolvedCount();
+        text = `Puzzle of Fortune\n${gameState.score} pts · ${solved} solved`;
+    }
+    copyShareText(text);
 }
 
 
@@ -1454,7 +1485,7 @@ function fallbackShare(text) {
     textarea.select();
     try {
         document.execCommand("copy");
-        showToast("Run copied to clipboard! 📋");
+        showToast("Copied.");
     } catch (e) {
         prompt("Copy your run:", text);
     }
@@ -1694,22 +1725,36 @@ function showDailyCompleteModal() {
 
 
 function shareDailyResult() {
-    const sessionPuzzles = window.currentSessionPuzzles || puzzles;
-    const dailyPuzzle = sessionPuzzles[0];
     const points = sessionPointsEarned || 0;
     const streak = gameState.dailyCurrentStreak || 1;
+    const pretty = new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    copyShareText(`Puzzle of Fortune Daily · ${pretty}\n+${points} pts · ${streak}-day streak`);
+}
 
-    const text = `🗓️ Daily Puzzle Complete!\n` +
-                 `+${points} points on "${dailyPuzzle.question}"\n` +
-                 `Current streak: ${streak} days 🔥\n\n` +
-                 `Play today's Daily Puzzle at Puzzle of Fortune!`;
+function showDailyAlreadyDone() {
+    const existing = document.getElementById('daily-done-modal');
+    if (existing) existing.remove();
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(() => {
-            showToast("Daily result copied to clipboard!");
-        }).catch(() => fallbackShare(text));
-    } else {
-        fallbackShare(text);
-    }
+    const streak = gameState.dailyCurrentStreak || 0;
+    const modal = document.createElement('div');
+    modal.id = 'daily-done-modal';
+    modal.innerHTML = `
+        <div onclick="event.stopImmediatePropagation()" class="fortune-modal w-full max-w-sm overflow-hidden">
+            <div class="px-6 pt-6 pb-2 text-center">
+                <div class="success-burst mx-auto mb-3">
+                    <i class="fa-solid fa-calendar-check text-3xl text-[var(--fortune-gold)]"></i>
+                </div>
+                <div class="heading-font text-2xl">Already in the bag</div>
+                <div class="streak-prize mt-3">${streak || '✓'}</div>
+                <div class="text-sm text-[var(--fortune-gold)] mt-1">${streak === 1 ? '1-day streak' : `${streak}-day streak`}</div>
+                <div class="text-sm text-slate-400 mt-3">Come back tomorrow for a new phrase.</div>
+            </div>
+            <div class="p-4">
+                <button type="button" onclick="document.getElementById('daily-done-modal').remove()" class="btn-gold w-full">Nice</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    attachFortuneOverlay(modal);
 }
 

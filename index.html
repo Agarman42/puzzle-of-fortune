@@ -65,9 +65,9 @@
                         <span>New Session</span>
                     </button>
 
-                    <button type="button" onclick="startDailyPuzzle()" class="btn-daily">
+                    <button type="button" id="daily-btn" onclick="startDailyPuzzle()" class="btn-daily">
                         <i class="fa-solid fa-calendar-day"></i>
-                        <span>Daily Puzzle</span>
+                        <span id="daily-btn-label">Daily Puzzle</span>
                         <span id="daily-streak-badge" class="streak-pill"></span>
                     </button>
                     <div id="daily-today-strip" class="daily-strip">
@@ -166,7 +166,7 @@
                     <span>Submit</span>
                 </button>
                 <div class="play-nav">
-                    <button type="button" onclick="prevPuzzle()" class="btn-nav">
+                    <button type="button" onclick="prevPuzzle()" class="btn-nav btn-nav-quiet">
                         <i class="fa-solid fa-arrow-left text-[10px]"></i>
                         <span>Prev</span>
                     </button>

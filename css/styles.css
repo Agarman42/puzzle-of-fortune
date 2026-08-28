@@ -32,6 +32,7 @@
 
 html, body {
     min-height: 100%;
+    overflow-x: hidden;
 }
 
 body {
@@ -74,6 +75,12 @@ body.scroll-locked {
     margin: 0 auto;
     padding-left: 1rem;
     padding-right: 1rem;
+}
+
+@media (min-width: 1200px) {
+    .app-shell {
+        max-width: 52rem;
+    }
 }
 
 /* ─── Header ─── */
@@ -128,6 +135,13 @@ body.scroll-locked {
     text-transform: uppercase;
     color: var(--fortune-muted);
     margin-top: 0.1rem;
+}
+
+@media (max-width: 420px) {
+    .brand-title { font-size: 1.12rem; }
+    .brand-kicker { display: none; }
+    .app-header .app-shell { padding-top: 0.55rem; padding-bottom: 0.55rem; }
+    .score-badge { min-height: 40px; padding: 0.22rem 0.7rem; }
 }
 
 .header-actions {
@@ -219,6 +233,27 @@ input:focus-visible {
 .hero-stage {
     text-align: center;
     position: relative;
+}
+
+@media (min-width: 1200px) {
+    .hero-stage {
+        padding: 2.6rem 2.25rem 2.8rem;
+        border-radius: 1.75rem;
+        border: 1px solid var(--hairline-slate);
+        background: rgba(11, 18, 32, 0.5);
+        box-shadow: 0 30px 80px -40px rgba(232, 197, 71, 0.25);
+    }
+    .hero-glow {
+        width: 22rem;
+        height: 11rem;
+        opacity: 1;
+        filter: blur(8px);
+    }
+    .hero-mark {
+        width: 5rem;
+        height: 5rem;
+        font-size: 2.2rem;
+    }
 }
 
 .hero-glow {
@@ -328,6 +363,12 @@ input:focus-visible {
 
 .btn-daily:active { transform: scale(0.985); }
 
+.btn-daily.is-done {
+    color: #6ee7b7;
+    border-color: rgba(52, 211, 153, 0.38);
+    background: rgba(16, 185, 129, 0.1);
+}
+
 .streak-pill {
     display: none;
     padding: 0.12rem 0.5rem;
@@ -382,18 +423,22 @@ input:focus-visible {
 
 .toolbar {
     margin-top: 1.15rem;
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.4rem;
-    flex-wrap: wrap;
+    max-width: 34rem;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .toolbar-btn {
     min-height: 44px;
-    padding: 0 0.9rem;
+    padding: 0 0.45rem;
+    justify-content: center;
     border-radius: 0.9rem;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 600;
+    white-space: nowrap;
     color: #cbd5e1;
     background: rgba(17, 24, 39, 0.7);
     border: 1px solid var(--hairline-slate);
@@ -627,7 +672,12 @@ input:focus-visible {
 
 .btn-help:hover { background: var(--fortune-navy-3); }
 .btn-help:active { transform: scale(0.98); }
-.btn-help:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-help:disabled,
+.btn-giveup:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 
 .play-actions {
     display: grid;
@@ -668,6 +718,16 @@ input:focus-visible {
 
 .btn-nav.next.is-finish {
     background: linear-gradient(180deg, var(--fortune-gold-hi), var(--fortune-gold-deep));
+    font-size: 0.72rem;
+    padding: 0 0.35rem;
+    text-align: center;
+    line-height: 1.15;
+}
+
+.btn-nav-quiet {
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 550;
 }
 
 .btn-giveup {
@@ -687,6 +747,8 @@ input:focus-visible {
 
 /* ─── Board / tiles ─── */
 .puzzle-container {
+    overflow-x: hidden;
+    max-width: 100%;
     background:
         linear-gradient(180deg, rgba(245, 215, 110, 0.04), transparent 30%),
         var(--fortune-navy);
@@ -752,12 +814,19 @@ input:focus-visible {
     --tile-radius: 4px;
 }
 
-@container (max-width: 360px) {
+@container (max-width: 420px) {
     .puzzle-tile {
-        --tile-w: 28px;
         width: 28px;
         height: 34px;
         font-size: 0.95rem;
+    }
+}
+
+@container (max-width: 340px) {
+    .puzzle-tile {
+        width: 22px;
+        height: 28px;
+        font-size: 0.8rem;
     }
 }
 
@@ -789,6 +858,12 @@ input.puzzle-tile {
     text-transform: uppercase;
 }
 
+input.puzzle-tile.is-typed {
+    background: #1a2744;
+    color: var(--fortune-gold-hi);
+    border-color: rgba(245, 215, 110, 0.7);
+}
+
 input.puzzle-tile:hover:not(:focus) {
     border-color: var(--fortune-gold-hi);
 }
@@ -811,6 +886,7 @@ input.puzzle-tile:focus {
 
 .word-group {
     display: flex;
+    flex-wrap: nowrap;
     gap: 4px;
     margin-right: 12px;
 }
@@ -1165,12 +1241,13 @@ input.puzzle-tile:focus {
 
 #achievement-unlock-banner {
     position: fixed;
-    top: auto;
-    bottom: calc(6.75rem + env(safe-area-inset-bottom, 0px));
-    left: 50%;
-    transform: translateX(-50%);
+    top: 4.7rem;
+    bottom: auto;
+    left: auto;
+    right: 0.85rem;
+    transform: none;
     z-index: 90;
-    width: min(92%, 22rem);
+    width: min(20rem, calc(100vw - 1.7rem));
     padding: 0.65rem 0.85rem;
     border-radius: 1.1rem;
     background: linear-gradient(165deg, #1c2740, #0B1220);
@@ -1465,6 +1542,10 @@ input.puzzle-tile:focus {
     font-weight: 600;
     box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.7);
     pointer-events: none;
+}
+
+.toast.toast-play {
+    bottom: calc(7.35rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (prefers-reduced-motion: reduce) {

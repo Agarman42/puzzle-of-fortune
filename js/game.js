@@ -145,7 +145,7 @@ function startDailyPuzzle() {
 
     // Check if already completed today
     if (gameState.dailyLastDate === today) {
-        showToast("You've already completed today's Daily Puzzle! Come back tomorrow.");
+        showDailyAlreadyDone();
         return;
     }
 
@@ -407,17 +407,23 @@ function updateSubmitButton() {
     const icon = btn.querySelector('i');
     const span = btn.querySelector('span');
 
-    if (fullRevealUsed) {
-        btn.classList.remove('btn-gold');
-        btn.classList.add('btn-continue');
-        if (icon) icon.className = 'fa-solid fa-arrow-right';
-        if (span) span.textContent = 'Continue';
-    } else {
-        btn.classList.add('btn-gold');
-        btn.classList.remove('btn-continue');
-        if (icon) icon.className = 'fa-solid fa-check';
-        if (span) span.textContent = 'Submit';
+    const locked = typeof puzzleLockedThisSession === 'function' && puzzleLockedThisSession();
+    const giveUp = document.getElementById('full-reveal-btn');
+    const revealBtn = document.getElementById('reveal-btn');
+    const extraBtn = document.getElementById('extra-hint-btn');
+    if (giveUp) giveUp.disabled = locked;
+    if (revealBtn) revealBtn.disabled = locked;
+    if (locked && extraBtn) extraBtn.disabled = true;
+
+    if (locked) {
+        btn.classList.add('hidden');
+        return;
     }
+    btn.classList.remove('hidden');
+    btn.classList.add('btn-gold');
+    btn.classList.remove('btn-continue');
+    if (icon) icon.className = 'fa-solid fa-check';
+    if (span) span.textContent = 'Submit';
 }
 
 
@@ -431,7 +437,7 @@ function updateNextButton() {
     const span = btn.querySelector('span');
 
     if (isLastPuzzle) {
-        if (span) span.textContent = 'Finish';
+        if (span) span.textContent = 'Finish Session';
         btn.classList.add('is-finish');
     } else {
         if (span) span.textContent = 'Next';
@@ -451,8 +457,7 @@ function submitAnswer() {
 
     if (isSubmittingAnswer) return;
 
-    // After timeout or full reveal, the primary button is "Continue" — advance the session
-    if (timeUpUsed || (fullRevealUsed && currentRevealed.size >= (sessionPuzzlesLetterCount()))) {
+    if (typeof puzzleLockedThisSession === 'function' && puzzleLockedThisSession()) {
         nextPuzzle();
         return;
     }
@@ -536,6 +541,7 @@ function submitAnswer() {
         }
 
         saveGameState();
+        updateHeaderScore();
         checkAndUnlockAchievements();
         let pos = 0;
         for (let i = 0; i < answer.length; i++) {
@@ -543,6 +549,7 @@ function submitAnswer() {
         }
         createPuzzleDisplay(puzzle);
         stopTimeAttackTimer();
+        updateSubmitButton();
         updateNextButton();
         showSuccessModal(puzzle, pointsEarned);
         isSubmittingAnswer = false;
@@ -630,6 +637,7 @@ function submitAnswer() {
             }, 8);
 
             setTimeout(() => {
+                if (typeof shouldAutofocusTiles === 'function' && !shouldAutofocusTiles()) return;
                 const inputs2 = Array.from(container.querySelectorAll('input.puzzle-tile'));
                 const firstEmpty = inputs2.find(i => !i.value);
                 if (firstEmpty) {
@@ -810,11 +818,11 @@ async function revealFullAnswerWithConfirm() {
     const ok = await showConfirm(
         "This shows the full phrase immediately.\nYou’ll earn 0 points for this puzzle.",
         {
-            title: "Peek at the answer?",
-            confirmLabel: "Reveal · 0 pts",
+            title: "Give up on this phrase?",
+            confirmLabel: "Show answer",
             cancelLabel: "Keep solving",
             variant: 'warning',
-            icon: 'eye',
+            icon: 'flag',
         }
     );
     if (!ok) return;
@@ -844,7 +852,7 @@ async function revealFullAnswerWithConfirm() {
         if (isAnswerLetter(answer[i])) currentRevealed.add(pos++);
     }
     createPuzzleDisplay(puzzle);
-    showToast("Full answer revealed. 0 points awarded.", 2200);
+    showToast("Answer shown · 0 pts", 1600);
 }
 
 
@@ -864,7 +872,7 @@ function nextPuzzle() {
         const isSolved = !!(sessionSolved[currentPuzzle.id] || fullRevealUsed || timeUpUsed);
 
         if (!isSolved) {
-            showToast("Solve or use the full Reveal on the last puzzle before you can finish the session.");
+            showToast("Solve or give up on this last puzzle first.");
             return;
         }
 

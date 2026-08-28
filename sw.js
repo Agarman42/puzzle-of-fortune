@@ -1,6 +1,6 @@
 /* Puzzle of Fortune — service worker (app shell + local assets offline) */
 /* Bump CACHE_VERSION when shipping asset changes so clients refresh. */
-const CACHE_VERSION = 'pof-v6';
+const CACHE_VERSION = 'pof-v8';
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `runtime-${CACHE_VERSION}`;
 
@@ -28,13 +28,22 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE)
-          .map((k) => caches.delete(k))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k !== SHELL_CACHE && k !== RUNTIME_CACHE)
+            .map((k) => caches.delete(k))
+        )
       )
-    ).then(() => self.clients.claim())
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((windows) =>
+        Promise.all(
+          windows.map((client) => (client.navigate ? client.navigate(client.url) : Promise.resolve()))
+        )
+      )
   );
 });
 
@@ -68,7 +77,7 @@ self.addEventListener('fetch', (event) => {
 
     if (isCode) {
       event.respondWith(
-        fetch(req)
+        fetch(req, { cache: 'no-store' })
           .then((res) => {
             if (res && res.ok) {
               const copy = res.clone();
@@ -95,10 +104,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CDN (Tailwind, Font Awesome, fonts): network-first, cache for offline
+  // CDN (Tailwind, Font Awesome, fonts): always network-first.
+  // Offline fallback only — versioned RUNTIME_CACHE is wiped on activate.
   if (isCdn(url)) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((res) => {
           if (res && res.ok) {
             const copy = res.clone();

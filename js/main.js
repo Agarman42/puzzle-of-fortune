@@ -53,11 +53,22 @@ function registerServiceWorker() {
     const protocol = location.protocol;
     if (protocol !== 'http:' && protocol !== 'https:') return;
 
+    const RELOAD_FLAG = 'pof-sw-reloaded';
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (sessionStorage.getItem(RELOAD_FLAG)) return;
+        sessionStorage.setItem(RELOAD_FLAG, '1');
+        window.location.reload();
+    });
+
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').then(
-            (reg) => console.log('%c[Puzzle of Fortune] SW registered', 'color:#64748b', reg.scope),
-            (err) => console.warn('[Puzzle of Fortune] SW registration failed', err)
-        );
+        navigator.serviceWorker
+            .register('./sw.js', { updateViaCache: 'none' })
+            .then((reg) => {
+                console.log('%c[Puzzle of Fortune] SW registered', 'color:#64748b', reg.scope);
+                if (reg.update) reg.update();
+            })
+            .catch((err) => console.warn('[Puzzle of Fortune] SW registration failed', err));
     });
 }
 
