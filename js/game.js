@@ -542,7 +542,6 @@ function submitAnswer() {
 
         saveGameState();
         updateHeaderScore();
-        checkAndUnlockAchievements();
         let pos = 0;
         for (let i = 0; i < answer.length; i++) {
             if (isAnswerLetter(answer[i])) currentRevealed.add(pos++);
@@ -552,6 +551,7 @@ function submitAnswer() {
         updateSubmitButton();
         updateNextButton();
         showSuccessModal(puzzle, pointsEarned);
+        checkAndUnlockAchievements();
         isSubmittingAnswer = false;
     } else {
         // Wrong answer handling

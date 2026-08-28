@@ -58,7 +58,6 @@ body::before {
 
 body > * {
     position: relative;
-    z-index: 1;
 }
 
 body.scroll-locked {
@@ -955,17 +954,21 @@ input.puzzle-tile:focus {
     inset: 0;
     z-index: 70;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
+    align-items: safe center;
     justify-content: center;
-    padding: 0.75rem;
+    justify-content: safe center;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px))
+             max(0.75rem, env(safe-area-inset-right, 0px))
+             max(0.75rem, env(safe-area-inset-bottom, 0px))
+             max(0.75rem, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     background: rgba(2, 6, 23, 0.72);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     animation: overlayIn 0.18s ease-out;
-}
-
-@media (min-width: 640px) {
-    .fortune-overlay { align-items: center; }
 }
 
 @keyframes overlayIn {
@@ -976,10 +979,18 @@ input.puzzle-tile:focus {
 .fortune-modal {
     position: relative;
     width: 100%;
-    overflow: hidden;
+    max-width: 32rem;
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    max-height: calc(100svh - 1.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    margin: auto;
     background: linear-gradient(165deg, #182235 0%, #0B1220 58%, #070B18 100%);
     border: 1px solid var(--hairline-slate);
-    border-radius: 1.5rem 1.5rem 1.1rem 1.1rem;
+    border-radius: 1.35rem;
     box-shadow: 0 28px 60px -20px rgba(0, 0, 0, 0.7);
     animation: modalPop 0.2s var(--ease);
 }
@@ -992,8 +1003,8 @@ input.puzzle-tile:focus {
     background: linear-gradient(90deg, transparent, var(--fortune-gold) 30%, var(--fortune-gold-hi) 70%, transparent);
 }
 
-@media (min-width: 640px) {
-    .fortune-modal { border-radius: 1.35rem; }
+#success-modal .fortune-modal {
+    max-width: 24rem;
 }
 
 .modal {
@@ -1241,13 +1252,13 @@ input.puzzle-tile:focus {
 
 #achievement-unlock-banner {
     position: fixed;
-    top: 4.7rem;
+    top: max(0.65rem, env(safe-area-inset-top, 0px));
     bottom: auto;
-    left: auto;
-    right: 0.85rem;
-    transform: none;
-    z-index: 90;
-    width: min(20rem, calc(100vw - 1.7rem));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    z-index: 85;
+    width: min(22rem, calc(100vw - 1.5rem));
     padding: 0.65rem 0.85rem;
     border-radius: 1.1rem;
     background: linear-gradient(165deg, #1c2740, #0B1220);
@@ -1270,17 +1281,21 @@ input.puzzle-tile:focus {
     inset: 0;
     z-index: 200;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
+    align-items: safe center;
     justify-content: center;
-    padding: 1rem;
+    justify-content: safe center;
+    padding: max(0.75rem, env(safe-area-inset-top, 0px))
+             max(0.75rem, env(safe-area-inset-right, 0px))
+             max(0.75rem, env(safe-area-inset-bottom, 0px))
+             max(0.75rem, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     background: rgba(2, 6, 23, 0.72);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     animation: appDialogBackdropIn 0.18s ease-out forwards;
-}
-
-@media (min-width: 640px) {
-    .app-dialog-overlay { align-items: center; }
 }
 
 @keyframes appDialogBackdropIn {
@@ -1297,8 +1312,14 @@ input.puzzle-tile:focus {
     position: relative;
     width: 100%;
     max-width: 26rem;
-    overflow: hidden;
-    border-radius: 1.75rem 1.75rem 1.25rem 1.25rem;
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+    max-height: calc(100svh - 1.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: auto;
+    border-radius: 1.35rem;
     background: linear-gradient(165deg, #1e293b 0%, #0f172a 55%, #0b1220 100%);
     border: 1px solid rgba(148, 163, 184, 0.18);
     box-shadow:
@@ -1306,10 +1327,6 @@ input.puzzle-tile:focus {
         0 25px 50px -12px rgba(0, 0, 0, 0.65),
         0 0 80px -20px var(--dialog-glow, rgba(232, 197, 71, 0.32));
     animation: appDialogCardIn 0.22s var(--ease) forwards;
-}
-
-@media (min-width: 640px) {
-    .app-dialog-card { border-radius: 1.75rem; }
 }
 
 @keyframes appDialogCardIn {
@@ -1528,11 +1545,12 @@ input.puzzle-tile:focus {
 
 .toast {
     position: fixed;
-    bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+    bottom: max(1.1rem, env(safe-area-inset-bottom, 0px));
     left: 50%;
     transform: translateX(-50%);
     z-index: 999;
-    max-width: min(92vw, 24rem);
+    width: max-content;
+    max-width: calc(100vw - 1.5rem);
     padding: 0.7rem 1.05rem;
     border-radius: 0.95rem;
     background: rgba(17, 24, 39, 0.94);
@@ -1542,10 +1560,11 @@ input.puzzle-tile:focus {
     font-weight: 600;
     box-shadow: 0 16px 32px -16px rgba(0, 0, 0, 0.7);
     pointer-events: none;
+    text-align: center;
 }
 
 .toast.toast-play {
-    bottom: calc(7.35rem + env(safe-area-inset-bottom, 0px));
+    bottom: max(5.5rem, calc(5.25rem + env(safe-area-inset-bottom, 0px)));
 }
 
 @media (prefers-reduced-motion: reduce) {

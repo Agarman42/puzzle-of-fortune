@@ -43,8 +43,33 @@ function countPuzzlesInCategory(value) {
     return puzzles.filter((p) => p.category === value).length;
 }
 
+function releaseViewport() {
+    const el = document.activeElement;
+    if (el && typeof el.blur === 'function' && el !== document.body) el.blur();
+    window.scrollTo(0, 0);
+}
+
+let pendingAchievement = null;
+function overlayBlocksAchievement() {
+    const success = document.getElementById('success-modal');
+    if (success && success.classList.contains('flex')) return true;
+    return !!(
+        document.getElementById('app-dialog') ||
+        document.getElementById('end-modal') ||
+        document.getElementById('daily-complete-modal') ||
+        document.getElementById('daily-done-modal')
+    );
+}
+function flushPendingAchievement() {
+    if (!pendingAchievement) return;
+    const ach = pendingAchievement;
+    pendingAchievement = null;
+    setTimeout(() => showAchievementUnlock(ach), 220);
+}
+
 function attachFortuneOverlay(overlay) {
     overlay.classList.add('fortune-overlay');
+    releaseViewport();
     dismissToasts();
     lockPageScroll();
     const onKey = (e) => {
@@ -62,6 +87,7 @@ function attachFortuneOverlay(overlay) {
         document.removeEventListener('keydown', onKey);
         unlockPageScroll();
         nativeRemove();
+        flushPendingAchievement();
     };
     return overlay;
 }
@@ -95,7 +121,10 @@ function updateHeaderScore(showLastSession = false) {
 
 
 function showAchievementUnlock(ach) {
-    // Remove any existing unlock banner first
+    if (overlayBlocksAchievement()) {
+        pendingAchievement = ach;
+        return;
+    }
     const existing = document.getElementById('achievement-unlock-banner');
     if (existing) existing.remove();
 
@@ -106,7 +135,7 @@ function showAchievementUnlock(ach) {
     banner.innerHTML = `
         <div class="text-2xl mt-0.5">${ach.icon}</div>
         <div class="flex-1 min-w-0">
-            <div class="text-[10px] font-bold tracking-[0.08em] uppercase text-[var(--fortune-gold)] mb-0.5">Unlocked</div>
+            <div class="text-[10px] font-bold uppercase text-[var(--fortune-gold)] mb-0.5">Unlocked</div>
             <div class="text-white font-semibold leading-tight">${ach.name}</div>
         </div>
         <button type="button" class="fortune-close !min-h-0 !min-w-0 !text-lg" onclick="this.closest('#achievement-unlock-banner').remove()">×</button>
@@ -465,6 +494,7 @@ function showSuccessModal(puzzle, pointsEarned = 0) {
     }
     modal.classList.remove('hidden');
     modal.classList.add('flex');
+    releaseViewport();
     dismissToasts();
     lockPageScroll();
     launchSimpleConfetti();
@@ -512,6 +542,7 @@ function hideSuccessModal() {
     modal.classList.add('hidden');
     unlockPageScroll();
     updateNextButton();
+    flushPendingAchievement();
 }
 
 
@@ -1325,6 +1356,7 @@ function showAppDialog({
         const iconName = resolveDialogIcon(theme, icon);
         let settled = false;
 
+        releaseViewport();
         dismissToasts();
         const overlay = document.createElement('div');
         overlay.id = 'app-dialog';
